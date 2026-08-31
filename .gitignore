@@ -4,6 +4,7 @@ DerivedData/
 build/
 .build/
 *.xcodeproj
+Hanji/Info.plist
 .swiftpm/
 *.o
 *.d

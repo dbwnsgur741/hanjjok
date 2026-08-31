@@ -1,0 +1,38 @@
+name: Hanji
+options:
+  bundleIdPrefix: kr.hurdlers
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  Domain:
+    path: Packages/Domain
+  Data:
+    path: Packages/Data
+  PanelKit:
+    path: Packages/PanelKit
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 2.0.0
+targets:
+  Hanji:
+    type: application
+    platform: macOS
+    sources:
+      - path: Hanji
+    dependencies:
+      - package: Domain
+      - package: Data
+      - package: PanelKit
+      - package: KeyboardShortcuts
+    info:
+      path: Hanji/Info.plist
+      properties:
+        LSUIElement: true
+        CFBundleDisplayName: 한지
+        NSHumanReadableCopyright: ""
+        ATSApplicationFontsPath: .
+    settings:
+      base:
+        SWIFT_VERSION: "5.10"
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: false
