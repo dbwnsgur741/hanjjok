@@ -48,7 +48,7 @@ final class TimelineModel {
         let note = Note(id: UUID(), content: text, createdAt: Date(), updatedAt: nil)
         do {
             try await repo.save(note)
-            notes.append(note)
+            HanjiTheme.motion { notes.append(note) }
             draft = ""
         } catch {
             log.error("저장 실패: \(error)")
@@ -58,7 +58,7 @@ final class TimelineModel {
     func delete(_ note: Note) async {
         do {
             try await repo.delete(id: note.id)
-            notes.removeAll { $0.id == note.id }
+            HanjiTheme.motion { notes.removeAll { $0.id == note.id } }
             undoStack.append(note)
         } catch {
             log.error("삭제 실패: \(error)")

@@ -9,6 +9,12 @@ struct TimelineView: View {
     @Bindable var model: TimelineModel
     @Environment(\.colorScheme) private var scheme
     @FocusState private var searchFieldFocused: Bool
+    // 설정 창에서 본문 글꼴 토글 시 이 패널(생성 후 재사용되는 단일 인스턴스)이 즉시 새로
+    // 반영하도록 하는 배선 — @AppStorage는 body 안에서 값을 직접 읽지 않아도 해당
+    // UserDefaults 키가 바뀔 때마다 SwiftUI가 이 뷰의 body를 다시 계산하게 만든다.
+    // 그러면 하위 NoteCardView.contentText/ComposerTextView가 HanjiTheme.bodyFont(NSFont)를
+    // 다시 호출해 새 폰트를 얻는다.
+    @AppStorage("usePretendardBody") private var usePretendardBody = false
 
     private var paper: Color { scheme == .dark ? HanjiTheme.paperDark : HanjiTheme.paperLight }
     private var ink: Color { scheme == .dark ? HanjiTheme.inkDark : HanjiTheme.inkLight }
@@ -56,6 +62,12 @@ struct TimelineView: View {
                             ForEach(group.notes) { note in
                                 NoteCardView(note: note, model: model)
                                     .id(note.id)
+                                    // 카드 안착 모션 — 전송 시 아래에서 사뿐히 올라온다.
+                                    // TimelineModel.submit/delete가 HanjiTheme.motion으로 감싸며,
+                                    // 그 안에서 '동작 줄이기' 존중 여부를 이미 판단한다.
+                                    .transition(.asymmetric(
+                                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                                        removal: .opacity))
                             }
                         }
                     }

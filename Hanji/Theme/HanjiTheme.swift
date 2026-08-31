@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import os
 
 private let themeLog = Logger(subsystem: "kr.hurdlers.Hanji", category: "theme")
@@ -107,6 +108,14 @@ enum HanjiTheme {
     }
     static func uiFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom(weight == .semibold ? FontName.pretendardSemiBold : FontName.pretendardRegular, size: size)
+    }
+
+    /// 카드 안착 등 짧은 상태 변화를 감싸는 공용 모션 헬퍼 — 전부 ≤200ms, 시스템
+    /// '동작 줄이기' 활성 시 애니메이션 없이 즉시 반영한다 (스펙 8장).
+    @MainActor
+    static func motion(_ body: () -> Void) {
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { body() }
+        else { withAnimation(.easeOut(duration: 0.2)) { body() } }
     }
 
     /// 태그 이름 → 결정적 색 배정 (재시작해도 같은 색)
