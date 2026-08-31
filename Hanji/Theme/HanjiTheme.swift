@@ -1,4 +1,7 @@
 import SwiftUI
+import os
+
+private let themeLog = Logger(subsystem: "kr.hurdlers.Hanji", category: "theme")
 
 extension Color {
     init(hex: UInt32, alpha: Double = 1.0) {
@@ -86,10 +89,13 @@ enum HanjiTheme {
             : .custom(FontName.maruBuriRegular, size: size)
     }
     static func bodyNSFont(size: CGFloat = 15) -> NSFont {
-        (UserDefaults.standard.bool(forKey: "usePretendardBody")
-            ? NSFont(name: FontName.pretendardRegular, size: size)
-            : NSFont(name: FontName.maruBuriRegular, size: size))
-            ?? .systemFont(ofSize: size)
+        let usePretendard = UserDefaults.standard.bool(forKey: "usePretendardBody")
+        let name = usePretendard ? FontName.pretendardRegular : FontName.maruBuriRegular
+        if let font = NSFont(name: name, size: size) {
+            return font
+        }
+        themeLog.fault("본문 폰트 '\(name, privacy: .public)' 로드 실패 — 시스템 폰트로 대체 (번들 손상 의심)")
+        return .systemFont(ofSize: size)
     }
     static func uiFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom(weight == .semibold ? FontName.pretendardSemiBold : FontName.pretendardRegular, size: size)

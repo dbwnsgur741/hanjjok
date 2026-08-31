@@ -1,6 +1,9 @@
 import SwiftUI
 import AppKit
 import Domain
+import os
+
+private let timelineLog = Logger(subsystem: "kr.hurdlers.Hanji", category: "timeline")
 
 struct TimelineView: View {
     @Bindable var model: TimelineModel
@@ -14,7 +17,10 @@ struct TimelineView: View {
     /// 256pt 타일(원본 512px @2x)로 쓰기 위해 번들 이미지를 복사해 size를 재설정한다.
     /// NSImage(named:)는 번들 캐시를 공유하므로 원본을 직접 변형하지 않는다.
     private static let grainTileImage: NSImage = {
-        guard let base = (NSImage(named: "HanjiGrain")?.copy() as? NSImage) else { return NSImage() }
+        guard let base = (NSImage(named: "HanjiGrain")?.copy() as? NSImage) else {
+            timelineLog.fault("HanjiGrain 텍스처 로드 실패 — 결 오버레이 없이 렌더링됨 (번들 리소스 누락 의심)")
+            return NSImage()
+        }
         base.size = NSSize(width: HanjiTheme.grainTileSize, height: HanjiTheme.grainTileSize)
         return base
     }()
@@ -109,8 +115,12 @@ struct DaySeparator: View {
             Text(label).font(HanjiTheme.uiFont(size: 11, weight: .semibold)).opacity(0.6).fixedSize()
             Rectangle().frame(height: 1).opacity(0.15)
         }
-        .padding(.top, HanjiTheme.seamMarginTop / 2)
-        .padding(.bottom, HanjiTheme.seamMarginBottom / 2)
+        // 렌더링된 이음매 여백은 승인 토큰(22/12)과 일치해야 한다. 이 뷰는
+        // LazyVStack(spacing: HanjiTheme.cardSpacing) 안에 놓이므로 스택이 위·아래에
+        // 이미 cardSpacing만큼을 더해준다 — 그 몫을 토큰에서 빼서 나머지만 패딩한다.
+        // 22 - 8 = 14 (위), 12 - 8 = 4 (아래)
+        .padding(.top, HanjiTheme.seamMarginTop - HanjiTheme.cardSpacing)
+        .padding(.bottom, HanjiTheme.seamMarginBottom - HanjiTheme.cardSpacing)
     }
 }
 
