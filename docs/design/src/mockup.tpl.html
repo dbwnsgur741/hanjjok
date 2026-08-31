@@ -1,0 +1,420 @@
+<title>한지 디자인 목업</title>
+
+<!-- ============================================================
+     Hanji — 한지에 붓 · 디자인 목업
+     프레임 3종: 한지(라이트) · 먹(다크) · 검색(⌘F)
+     본문 MaruBuri / UI Pretendard, 한지 결 타일까지 파일 끝에 base64 임베드.
+     외부 요청 없음.
+     ============================================================ -->
+
+<style>
+/* ══ 발표용 보드 (앱 아님) ══════════════════════════════════ */
+:root{
+  --board:#2E2D2A; --board-2:#252420;
+  --board-ink:#D5CEC0; --board-dim:#918B7E; --board-line:#46443F;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+}
+body{
+  background:radial-gradient(130% 85% at 50% -10%, #3B3936 0%, var(--board) 44%, var(--board-2) 100%);
+  color:var(--board-ink);
+  font-family:"Pretendard", -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding:56px 32px 68px; min-height:100vh; word-break:keep-all;
+}
+.wrap{max-width:1264px;margin:0 auto}
+
+.masthead{max-width:648px;margin:0 0 46px}
+.masthead h1{
+  font-family:"MaruBuri",serif;font-size:32px;font-weight:400;letter-spacing:-.015em;
+  color:#F0EADD;margin:0 0 11px;
+}
+.masthead h1 em{
+  font-family:"Pretendard",sans-serif;font-style:normal;font-size:14px;font-weight:400;
+  letter-spacing:.26em;color:var(--board-dim);margin-left:14px;vertical-align:6px;
+}
+.masthead p{margin:0;font-size:13px;line-height:1.78;color:var(--board-dim)}
+.masthead p b{color:var(--board-ink);font-weight:600}
+
+.frames{display:flex;flex-wrap:wrap;gap:46px 40px;align-items:flex-start}
+.col{width:360px;flex:0 0 auto}
+.col > h2{margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#E8E2D5}
+.col > h2 em{font-style:normal;color:var(--board-dim);font-weight:400;letter-spacing:.04em;margin-left:8px}
+.col > .sub{margin:0 0 15px;font-size:11px;line-height:1.65;color:var(--board-dim);min-height:2em}
+
+.tok{width:100%;border-collapse:collapse;margin-top:19px;font-size:11px}
+.tok caption{caption-side:top;text-align:left;font-size:10px;font-weight:600;
+  letter-spacing:.13em;color:var(--board-dim);padding:0 0 8px}
+.tok td{padding:5px 0;border-bottom:1px solid rgba(255,255,255,.055);vertical-align:middle}
+.tok tr:last-child td{border-bottom:0}
+.tok .k{color:var(--board-ink);white-space:nowrap}
+.tok .k em{font-style:normal;color:var(--board-dim);font-size:10px;margin-left:5px}
+.tok .v{font-family:var(--mono);font-size:10.5px;color:#EFE9DC;text-align:right;
+  white-space:nowrap;padding-left:10px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;
+  margin-right:8px;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.34), 0 0 0 1px rgba(0,0,0,.25)}
+
+/* ══════════════════════════════════════════════════════════
+   패널 — 실물 360 × 720
+   ══════════════════════════════════════════════════════════ */
+.panel{
+  --grain:__GRAIN__;
+
+  /* 한지 */
+  --paper-rgb:226,217,194;
+  --paper:#E2D9C2;
+  --card:#EFE8D6;
+  --ink:#2A2620;
+  --ink-soft:#6E6559;
+  --ink-mute:#8A8070;
+  --jjok:#274C77;
+  --jjok-wash:rgba(39,76,119,.16);
+  --seam-dark:rgba(42,38,32,.24);
+  --seam-light:rgba(255,251,240,.75);
+  --card-shadow:0 1px 1.5px rgba(60,48,30,.10), 0 0 0 .5px rgba(60,48,30,.07);
+  --grain-tint:#4A3D28;
+  --grain-op:.16;
+  --o-cheong:#2E6B63; --o-jeok:#9C3B33; --o-hwang:#8A6420; --o-baek:#5F6A70; --o-heuk:#3E3B4A;
+
+  position:relative;width:360px;height:720px;overflow:hidden;
+  border-radius:10px 0 0 10px;background:var(--paper);
+  display:flex;flex-direction:column;
+  box-shadow:0 24px 56px -14px rgba(0,0,0,.58), 0 2px 10px rgba(0,0,0,.32);
+}
+.panel.meok{
+  /* 먹 — 반전이 아니라 다른 재료. 바탕은 먹빛 회흑, 글자는 옅은 미색. */
+  --paper-rgb:28,26,23;
+  --paper:#1C1A17;
+  --card:#25221E;
+  --ink:#E8E0CE;
+  --ink-soft:#948B7A;
+  --ink-mute:#736B5D;
+  --jjok:#7EA6CE;
+  --jjok-wash:rgba(126,166,206,.20);
+  --seam-dark:rgba(0,0,0,.45);
+  --seam-light:rgba(232,224,206,.09);
+  --card-shadow:0 1px 2px rgba(0,0,0,.34), 0 0 0 .5px rgba(232,224,206,.055);
+  --grain-tint:#D8CDB4;
+  --grain-op:.09;
+  --o-cheong:#6FA79C; --o-jeok:#C97F73; --o-hwang:#C6A05C; --o-baek:#9FAEB6; --o-heuk:#9A93AB;
+}
+
+/* 한지 결 — 알파 노이즈 한 장을 먹색으로 마스킹해 패널 전체(카드·글자 위까지) 덮는다.
+   512px 소스를 256pt 타일로 = @2x. 카드에만 따로 얹지 않아야 한 장의 종이로 읽힌다. */
+.panel::after{
+  content:"";position:absolute;inset:0;z-index:6;pointer-events:none;
+  background:var(--grain-tint);opacity:var(--grain-op);
+  -webkit-mask-image:var(--grain);mask-image:var(--grain);
+  -webkit-mask-size:256px 256px;mask-size:256px 256px;
+  -webkit-mask-repeat:repeat;mask-repeat:repeat;
+  -webkit-mask-mode:alpha;mask-mode:alpha;
+}
+/* 위로 흘러간 메모가 패널 모서리 아래로 잠긴다 */
+.panel::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:20px;z-index:3;pointer-events:none;
+  background:linear-gradient(to bottom, rgba(var(--paper-rgb),1) 0%, rgba(var(--paper-rgb),0) 100%);
+}
+
+.stream{
+  flex:1;min-height:0;overflow:hidden;padding:0 16px;
+  display:flex;flex-direction:column;justify-content:flex-end;
+}
+
+/* ── 날짜 구분선 = 배접 이음매 ─────────────────────────────
+   위 1px 눌린 자국 · 아래 1px 들뜬 자국. 종이 두 장이 겹친 자리.
+   라벨은 왼쪽에 두고 선은 패널 오른쪽 끝으로 흘려보낸다. */
+.seam{display:flex;align-items:center;gap:10px;margin:22px -16px 12px 0;flex:none}
+.seam:first-child{margin-top:0}
+.seam b{font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--ink-soft)}
+.seam i{flex:1;height:2px;
+  background:linear-gradient(to bottom,var(--seam-dark) 0 1px,var(--seam-light) 1px 2px)}
+
+/* ── 떡메모지 낱장 ───────────────────────────────────────── */
+.note{
+  flex:none;background:var(--card);border-radius:6px;padding:11px 13px;
+  box-shadow:var(--card-shadow);margin-bottom:8px;
+  font-family:"MaruBuri",serif;font-size:15px;line-height:1.62;color:var(--ink);
+  word-break:keep-all;overflow-wrap:anywhere;
+}
+.note:last-child{margin-bottom:0}
+.note .at{
+  float:right;margin:5px 0 0 10px;
+  font-family:"Pretendard",sans-serif;font-size:10.5px;line-height:1;letter-spacing:.01em;
+  color:var(--ink-soft);
+}
+
+/* ── 인라인 해시태그 — 저채도 오방색 ─────────────────────── */
+.t{
+  font-family:"Pretendard",sans-serif;font-size:12.5px;font-weight:600;letter-spacing:-.01em;
+  padding:1px 5px;margin:0 1px;border-radius:3px;white-space:nowrap;
+  color:var(--c);background:color-mix(in srgb, var(--c) 12%, transparent);
+}
+.t.cheong{--c:var(--o-cheong)} .t.jeok{--c:var(--o-jeok)} .t.hwang{--c:var(--o-hwang)}
+.t.baek{--c:var(--o-baek)}     .t.heuk{--c:var(--o-heuk)}
+
+/* 검색 매치 — 본문은 쪽빛으로 물들이고, 태그는 객체이므로 쪽빛 테두리를 두른다 */
+mark{background:var(--jjok-wash);color:inherit;border-radius:2px;padding:0 1px}
+.t.hit{box-shadow:0 0 0 1px var(--jjok)}
+
+/* ── 하단 고정 컴포저 ────────────────────────────────────── */
+.dock{
+  flex:none;position:relative;z-index:4;padding:13px 16px 15px;
+  background:linear-gradient(to top, rgba(var(--paper-rgb),1) 64%, rgba(var(--paper-rgb),0) 100%);
+}
+.dock::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:var(--seam-dark)}
+.field{
+  background:var(--card);border-radius:6px;padding:10px 12px;
+  display:flex;align-items:center;gap:1px;
+  box-shadow:inset 0 0 0 .5px var(--seam-dark);
+  font-family:"MaruBuri",serif;font-size:15px;line-height:1.5;color:var(--ink);
+}
+.field .ph{color:var(--ink-mute)}
+.caret{
+  display:inline-block;width:2px;height:19px;flex:none;border-radius:1px;
+  background:var(--jjok);animation:blink 1.15s steps(1,end) infinite;
+}
+@keyframes blink{0%,48%{opacity:1}52%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.caret{animation:none}}
+
+.hint{display:flex;justify-content:flex-end;gap:13px;margin-top:8px;
+  font-size:10.5px;line-height:1;color:var(--ink-soft)}
+.hint kbd{font:inherit}
+
+/* ── 검색 모드 ───────────────────────────────────────────── */
+.bar{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px;
+  font-size:10.5px;line-height:1;color:var(--ink-soft)}
+.field.search{font-family:"Pretendard",sans-serif;font-size:14px;gap:8px;letter-spacing:-.01em}
+.field.search svg{flex:none;color:var(--ink-soft);margin-top:1px}
+.field.search .q{flex:1;display:flex;align-items:center;gap:1px}
+.chip{flex:none;font-size:10px;font-weight:600;letter-spacing:.04em;
+  padding:2px 6px;border-radius:3px;color:var(--jjok);background:var(--jjok-wash)}
+
+/* ── 각주 ────────────────────────────────────────────────── */
+.foot{margin-top:54px;padding-top:22px;border-top:1px solid var(--board-line);
+  font-size:11px;line-height:1.9;color:var(--board-dim);max-width:800px}
+.foot p{margin:0 0 10px}
+.foot p:last-child{margin:0}
+.foot b{color:var(--board-ink);font-weight:600}
+.foot code{font-family:var(--mono);font-size:10.5px;color:#CFC7B7;word-break:break-word}
+</style>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>한지에 붓<em>HANJI</em></h1>
+    <p>라이트는 <b>한지</b> — 미색 바탕에 결이 남은 종이. 다크는 <b>먹</b> — 짙은 회흑에 옅은 미색 글자로, 반전이 아니라 다른 재료다.
+       글자는 순검정이 아닌 먹빛, 액센트는 <b>쪽빛</b>, 태그는 저채도 오방색 다섯 갈래.
+       메모는 떡메모지 낱장으로 아래에서 위로 쌓이고, 날짜가 바뀌는 자리에는 배접 이음매가 한 줄 지나간다.</p>
+  </div>
+
+  <div class="frames">
+
+    <!-- ════ 1. 한지 (라이트) ════ -->
+    <div class="col">
+      <h2>한지<em>라이트 · 360 × 720</em></h2>
+      <p class="sub">입력 대기. 쪽빛 커서가 서 있고, 날짜가 바뀌는 자리마다 배접 이음매가 지나간다.</p>
+
+      <div class="panel">
+        <div class="stream">
+          <div class="seam"><b>어제</b><i></i></div>
+
+          <div class="note"><span class="at">07:05</span>
+            러닝 5.2km, 페이스 6′10″.
+            <span class="t baek">#운동</span></div>
+
+          <div class="note"><span class="at">20:12</span>
+            한지 결은 5%쯤이 좋다. 더 넣으면 종이가 아니라 벽지가 된다.
+            <span class="t cheong">#한지</span></div>
+
+          <div class="note"><span class="at">22:18</span>
+            『검은 꽃』 3장까지.
+            <span class="t jeok">#독서</span></div>
+
+          <div class="seam"><b>오늘</b><i></i></div>
+
+          <div class="note"><span class="at">09:41</span>
+            한지가 ‘흘러가는 기록’이라는 전제를 지키려면, 폴더를 넣는 순간 무너진다.
+            <span class="t hwang">#아이디어</span></div>
+
+          <div class="note"><span class="at">11:07</span>
+            회의록 목요일까지. 지난주 결정 두 개만 추리면 된다.
+            <span class="t heuk">#업무</span></div>
+
+          <div class="note"><span class="at">14:32</span>
+            패널 폭은 360이 맞다. 400은 화면을 너무 먹는다. 300~480 조절은 설정으로.
+            <span class="t cheong">#한지</span></div>
+
+          <div class="note"><span class="at">16:20</span>
+            쪽빛은 남색보다 초록이 조금 섞여야 쪽 같다. 한지 위에서 특히.
+            <span class="t cheong">#한지</span> <span class="t hwang">#아이디어</span></div>
+        </div>
+
+        <div class="dock">
+          <div class="field"><span class="caret"></span><span class="ph">&nbsp;무엇이든</span></div>
+          <div class="hint"><span><kbd>⏎</kbd> 저장</span><span><kbd>⌘F</kbd> 검색</span></div>
+        </div>
+      </div>
+
+      <table class="tok">
+        <caption>한지 · 라이트</caption>
+        <tr><td class="k"><i class="sw" style="background:#E2D9C2"></i>paper<em>바탕</em></td><td class="v">#E2D9C2</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#EFE8D6"></i>card<em>떡메모지</em></td><td class="v">#EFE8D6</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#2A2620"></i>ink<em>본문</em></td><td class="v">#2A2620</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#6E6559"></i>inkSoft<em>시각·라벨</em></td><td class="v">#6E6559</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#8A8070"></i>inkMute<em>플레이스홀더</em></td><td class="v">#8A8070</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#274C77"></i>jjok<em>쪽빛</em></td><td class="v">#274C77</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#2E6B63"></i>tag 청</td><td class="v">#2E6B63</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#9C3B33"></i>tag 적</td><td class="v">#9C3B33</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#8A6420"></i>tag 황</td><td class="v">#8A6420</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#5F6A70"></i>tag 백</td><td class="v">#5F6A70</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#3E3B4A"></i>tag 흑</td><td class="v">#3E3B4A</td></tr>
+        <tr><td class="k">결 tint · 농도</td><td class="v">#4A3D28 · 16%</td></tr>
+        <tr><td class="k">카드 그림자</td><td class="v">0 1 1.5 · 60,48,30 @10%</td></tr>
+        <tr><td class="k">이음매<em>위 / 아래</em></td><td class="v">2A2620 24% / FFFBF0 75%</td></tr>
+      </table>
+    </div>
+
+    <!-- ════ 2. 먹 (다크) ════ -->
+    <div class="col">
+      <h2>먹<em>다크 · 360 × 720</em></h2>
+      <p class="sub">작성 중. 같은 지면에 재료만 바뀐다 — 흰 글자가 아니라 옅은 미색 글자다.</p>
+
+      <div class="panel meok">
+        <div class="stream">
+          <div class="seam"><b>어제</b><i></i></div>
+
+          <div class="note"><span class="at">07:05</span>
+            러닝 5.2km, 페이스 6′10″.
+            <span class="t baek">#운동</span></div>
+
+          <div class="note"><span class="at">20:12</span>
+            한지 결은 5%쯤이 좋다. 더 넣으면 종이가 아니라 벽지가 된다.
+            <span class="t cheong">#한지</span></div>
+
+          <div class="note"><span class="at">22:18</span>
+            『검은 꽃』 3장까지.
+            <span class="t jeok">#독서</span></div>
+
+          <div class="seam"><b>오늘</b><i></i></div>
+
+          <div class="note"><span class="at">09:41</span>
+            한지가 ‘흘러가는 기록’이라는 전제를 지키려면, 폴더를 넣는 순간 무너진다.
+            <span class="t hwang">#아이디어</span></div>
+
+          <div class="note"><span class="at">11:07</span>
+            회의록 목요일까지. 지난주 결정 두 개만 추리면 된다.
+            <span class="t heuk">#업무</span></div>
+
+          <div class="note"><span class="at">14:32</span>
+            패널 폭은 360이 맞다. 400은 화면을 너무 먹는다. 300~480 조절은 설정으로.
+            <span class="t cheong">#한지</span></div>
+
+          <div class="note"><span class="at">16:20</span>
+            쪽빛은 남색보다 초록이 조금 섞여야 쪽 같다. 한지 위에서 특히.
+            <span class="t cheong">#한지</span> <span class="t hwang">#아이디어</span></div>
+        </div>
+
+        <div class="dock">
+          <div class="field">내일 오전에 폰트 라이선스 확인<span class="caret"></span></div>
+          <div class="hint"><span><kbd>⏎</kbd> 저장</span><span><kbd>⌘F</kbd> 검색</span></div>
+        </div>
+      </div>
+
+      <table class="tok">
+        <caption>먹 · 다크</caption>
+        <tr><td class="k"><i class="sw" style="background:#1C1A17"></i>paper<em>바탕</em></td><td class="v">#1C1A17</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#25221E"></i>card<em>떡메모지</em></td><td class="v">#25221E</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#E8E0CE"></i>ink<em>본문</em></td><td class="v">#E8E0CE</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#948B7A"></i>inkSoft<em>시각·라벨</em></td><td class="v">#948B7A</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#736B5D"></i>inkMute<em>플레이스홀더</em></td><td class="v">#736B5D</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#7EA6CE"></i>jjok<em>쪽빛</em></td><td class="v">#7EA6CE</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#6FA79C"></i>tag 청</td><td class="v">#6FA79C</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#C97F73"></i>tag 적</td><td class="v">#C97F73</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#C6A05C"></i>tag 황</td><td class="v">#C6A05C</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#9FAEB6"></i>tag 백</td><td class="v">#9FAEB6</td></tr>
+        <tr><td class="k"><i class="sw" style="background:#9A93AB"></i>tag 흑</td><td class="v">#9A93AB</td></tr>
+        <tr><td class="k">결 tint · 농도</td><td class="v">#D8CDB4 · 9%</td></tr>
+        <tr><td class="k">카드 그림자</td><td class="v">0 1 2 · 0,0,0 @34%</td></tr>
+        <tr><td class="k">이음매<em>위 / 아래</em></td><td class="v">000000 45% / E8E0CE 9%</td></tr>
+      </table>
+    </div>
+
+    <!-- ════ 3. 검색 ════ -->
+    <div class="col">
+      <h2>검색<em>⌘F · 초성 질의</em></h2>
+      <p class="sub">‘ㅎㅈ’ 두 글자. 본문은 쪽빛으로 물들이고, 매치된 태그에는 쪽빛 테두리를 두른다.</p>
+
+      <div class="panel">
+        <div class="stream">
+          <div class="seam"><b>어제</b><i></i></div>
+
+          <div class="note"><span class="at">20:12</span>
+            <mark>한지</mark> 결은 5%쯤이 좋다. 더 넣으면 종이가 아니라 벽지가 된다.
+            <span class="t cheong hit">#한지</span></div>
+
+          <div class="seam"><b>오늘</b><i></i></div>
+
+          <div class="note"><span class="at">09:41</span>
+            <mark>한지</mark>가 ‘흘러가는 기록’이라는 전제를 지키려면, 폴더를 넣는 순간 무너진다.
+            <span class="t hwang">#아이디어</span></div>
+
+          <div class="note"><span class="at">14:32</span>
+            패널 폭은 360이 맞다. 400은 화면을 너무 먹는다. 300~480 조절은 설정으로.
+            <span class="t cheong hit">#한지</span></div>
+
+          <div class="note"><span class="at">16:20</span>
+            쪽빛은 남색보다 초록이 조금 섞여야 쪽 같다. <mark>한지</mark> 위에서 특히.
+            <span class="t cheong hit">#한지</span> <span class="t hwang">#아이디어</span></div>
+        </div>
+
+        <div class="dock">
+          <div class="bar"><span>결과 4건</span><span><kbd>Esc</kbd> 검색 닫기</span></div>
+          <div class="field search">
+            <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true">
+              <circle cx="6" cy="6" r="4.1" fill="none" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M9.1 9.1 12.3 12.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span class="q">ㅎㅈ<span class="caret"></span></span>
+            <span class="chip">초성</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="tok">
+        <caption>타이포 · 치수 (테마 공통)</caption>
+        <tr><td class="k">본문</td><td class="v">MaruBuri 15 / 1.62</td></tr>
+        <tr><td class="k">해시태그</td><td class="v">Pretendard SB 12.5</td></tr>
+        <tr><td class="k">태그 칩 바탕</td><td class="v">태그색 12% · r3</td></tr>
+        <tr><td class="k">시각</td><td class="v">Pretendard 10.5</td></tr>
+        <tr><td class="k">날짜 라벨</td><td class="v">Pretendard SB 11 · +.1em</td></tr>
+        <tr><td class="k">검색 입력</td><td class="v">Pretendard 14</td></tr>
+        <tr><td class="k">매치 · 본문</td><td class="v">jjok 16% 바탕 · r2</td></tr>
+        <tr><td class="k">매치 · 태그</td><td class="v">jjok 1px 테두리</td></tr>
+        <tr><td class="k">카드 패딩</td><td class="v">11 × 13</td></tr>
+        <tr><td class="k">카드 반경 · 간격</td><td class="v">6 · 8</td></tr>
+        <tr><td class="k">이음매 여백</td><td class="v">위 22 · 아래 12</td></tr>
+        <tr><td class="k">패널 좌우 여백</td><td class="v">16</td></tr>
+        <tr><td class="k">컴포저</td><td class="v">13/16/15 · 필드 10×12</td></tr>
+        <tr><td class="k">커서</td><td class="v">2 × 19 · jjok</td></tr>
+        <tr><td class="k">줄바꿈</td><td class="v">keep-all (어절 유지)</td></tr>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <p><b>한지 결</b> — 알파 노이즈 한 장(512 × 512, 이음매 없이 반복)을 잉크색으로 마스킹해 패널 전체에 덮는다.
+      카드와 글자 위까지 같은 결이 지나가야 한 장의 종이로 읽힌다. 512px 소스를 256pt 타일로 배치(@2x).
+      <code>feTurbulence fractalNoise · 잔결 0.90 / 4옥타브 · 섬유 0.004 0.22 / 1옥타브 · 8:2 혼합 · alpha = 1.9(R+G) − 1.6 · stitchTiles</code></p>
+    <p><b>폰트</b> — 본문 MaruBuri(마루 부리, 네이버 한글한글 아름답게) · UI Pretendard 1.3.9. 둘 다 OFL, 이 파일에 임베드되어 외부 요청이 없다.</p>
+    <p><b>대비</b> — 본문 11:1, 시각·라벨 4.7:1, 오방색 태그 5색 모두 4.8:1 이상 (WCAG AA 충족).
+      플레이스홀더만 3.2:1 — 입력 안내는 내용이 아니라는 신호를 위해 의도적으로 낮췄다.</p>
+  </div>
+
+</div>
+
+<style>
+/* ══ 임베드 자산 (base64) — 아래는 폰트 바이너리다 ══════════ */
+@font-face{font-family:"MaruBuri";font-style:normal;font-weight:400;font-display:block;src:url(data:font/woff2;base64,__MB_R__) format("woff2")}
+@font-face{font-family:"Pretendard";font-style:normal;font-weight:400;font-display:block;src:url(data:font/woff2;base64,__PT_R__) format("woff2")}
+@font-face{font-family:"Pretendard";font-style:normal;font-weight:600;font-display:block;src:url(data:font/woff2;base64,__PT_SB__) format("woff2")}
+</style>
