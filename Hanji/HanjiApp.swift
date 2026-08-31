@@ -64,12 +64,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 설정 창에서 패널 위치/폭을 바꾸면 다음 show()가 아니라 즉시 반영되도록 구독한다.
         // (SettingsView는 @AppStorage로 UserDefaults에 바로 쓰므로 이 알림이 항상 뒤따른다.)
+        // UserDefaults.didChangeNotification은 이 두 키뿐 아니라 단축키 녹화·글꼴 토글 등
+        // 모든 defaults 변경에도 발동하므로, 실제로 값이 바뀐 경우에만 대입한다 — panelController가
+        // 매번 무조건 갱신되면(변경 없음에도) 불필요한 쓰기가 반복된다.
         defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            self.panelController.side = self.currentPanelSide()
-            self.panelController.width = self.currentPanelWidth()
+            let side = self.currentPanelSide()
+            if self.panelController.side.rawValue != side.rawValue { self.panelController.side = side }
+            let width = self.currentPanelWidth()
+            if self.panelController.width != width { self.panelController.width = width }
         }
     }
 
@@ -120,16 +125,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor @objc func exportAll() {
         Task {
-            guard let notes = try? await self.repo.exportAll() else { return }
-            let markdown = MarkdownExporter.export(notes)
-            let panel = NSSavePanel()
-            panel.nameFieldStringValue = "hanji-export.md"
-            // LSUIElement 앱은 Dock 아이콘이 없어 활성화하지 않으면 저장 패널이 키 윈도우가
-            // 되지 않을 수 있다 — 반드시 runModal() 전에 활성화한다.
-            NSApp.activate(ignoringOtherApps: true)
-            if panel.runModal() == .OK, let url = panel.url {
-                try? markdown.write(to: url, atomically: true, encoding: .utf8)
+            do {
+                let notes = try await self.repo.exportAll()
+                let markdown = MarkdownExporter.export(notes)
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = "hanji-export.md"
+                // LSUIElement 앱은 Dock 아이콘이 없어 활성화하지 않으면 저장 패널이 키 윈도우가
+                // 되지 않을 수 있다 — 반드시 runModal() 전에 활성화한다.
+                NSApp.activate(ignoringOtherApps: true)
+                if panel.runModal() == .OK, let url = panel.url {
+                    try markdown.write(to: url, atomically: true, encoding: .utf8)
+                }
+            } catch {
+                self.showExportError(error)
             }
         }
+    }
+
+    @MainActor private func showExportError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "내보내기에 실패했습니다"
+        alert.informativeText = error.localizedDescription
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 }
