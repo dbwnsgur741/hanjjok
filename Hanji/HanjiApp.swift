@@ -2,6 +2,8 @@ import SwiftUI
 import AppKit
 import PanelKit
 import KeyboardShortcuts
+import Domain
+import Data
 
 extension KeyboardShortcuts.Name {
     static let togglePanel = Self("togglePanel", default: .init(.space, modifiers: [.option]))
@@ -20,12 +22,27 @@ struct HanjiApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private(set) var panelController: EdgePanelController!
+    // Task 14의 내보내기가 사용
+    private(set) var repo: GRDBNoteRepository!
+    private(set) var model: TimelineModel!
 
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Hanji")
+        do {
+            repo = try GRDBNoteRepository(databaseURL: appSupport.appendingPathComponent("hanji.sqlite"))
+            try BackupScheduler.runIfNeeded(
+                repository: repo, backupsDir: appSupport.appendingPathComponent("Backups"))
+        } catch {
+            fatalError("데이터베이스 초기화 실패: \(error)")
+        }
+        model = TimelineModel(repo: repo)
+
         let sideRaw = UserDefaults.standard.string(forKey: "panelSide") ?? PanelSide.right.rawValue
         let side = PanelSide(rawValue: sideRaw) ?? .right
-        let host = NSHostingView(rootView: PanelRootView())
+        let host = NSHostingView(rootView: PanelRootView(model: model))
         panelController = EdgePanelController(contentView: host, side: side, width: 360)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
