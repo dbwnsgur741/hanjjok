@@ -43,6 +43,14 @@ enum HanjiTheme {
     static let seamAboveDark = Color(hex: 0x000000, alpha: 0.45)
     static let seamBelowDark = Color(hex: 0xE8E0CE, alpha: 0.09)
 
+    // MARK: - 카드 그림자 (이중 레이어: 주 그림자 + 밀착 윤곽 그림자)
+    // Task 12에서 tokens.md "카드 그림자" 행을 그대로 옮겨 추가함 (Task 11에는 없었음).
+
+    static let cardShadow1Light = Color(hex: 0x3C301E, alpha: 0.10)
+    static let cardShadow2Light = Color(hex: 0x3C301E, alpha: 0.07)
+    static let cardShadow1Dark = Color(hex: 0x000000, alpha: 0.34)
+    static let cardShadow2Dark = Color(hex: 0xE8E0CE, alpha: 0.055)
+
     // MARK: - 저채도 오방색 (태그) — 청·적·황·백·흑, 라이트/다크 인덱스 대응
 
     static let tagColorsLight: [Color] = [

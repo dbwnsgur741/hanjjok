@@ -123,22 +123,3 @@ struct DaySeparator: View {
         .padding(.bottom, HanjiTheme.seamMarginBottom - HanjiTheme.cardSpacing)
     }
 }
-
-// Task 12에서 완성 — 걷는 골격용 최소 버전
-struct NoteCardView: View {
-    let note: Note
-    let model: TimelineModel
-    @Environment(\.colorScheme) private var scheme
-
-    private var card: Color { scheme == .dark ? HanjiTheme.cardDark : HanjiTheme.cardLight }
-
-    var body: some View {
-        Text(note.content)
-            .font(HanjiTheme.bodyFont())
-            .lineSpacing((HanjiTheme.bodyLineHeightMultiple - 1) * 15)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, HanjiTheme.cardPaddingV)
-            .padding(.horizontal, HanjiTheme.cardPaddingH)
-            .background(RoundedRectangle(cornerRadius: HanjiTheme.cardRadius).fill(card))
-    }
-}
