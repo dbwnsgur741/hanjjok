@@ -61,8 +61,8 @@ struct TimelineView: View {
                     }
                     .padding(HanjiTheme.panelHorizontalMargin)
                 }
-                .onChange(of: model.notes.count) {
-                    if let last = model.notes.last {
+                .onChange(of: model.displayedNotes.count) {
+                    if let last = model.displayedNotes.last {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
