@@ -36,7 +36,7 @@ final class TimelineModel {
 
     func load() async {
         do {
-            notes = try await repo.timeline(before: nil, limit: 300).reversed()
+            notes = try await repo.timeline(filter: .all, before: nil, limit: 300).reversed()
         } catch {
             log.error("타임라인 로드 실패: \(error)")
         }
@@ -119,7 +119,7 @@ final class TimelineModel {
             }
             do {
                 // 검색 결과도 타임라인처럼 오래된 것 위, 최신 아래로 표시
-                self.searchResults = try await self.repo.search(query, limit: 200).reversed()
+                self.searchResults = try await self.repo.search(query, filter: .all, limit: 200).reversed()
             } catch {
                 self.log.error("검색 실패: \(error)")
             }

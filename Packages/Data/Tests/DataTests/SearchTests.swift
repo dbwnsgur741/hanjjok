@@ -27,33 +27,33 @@ final class SearchTests: XCTestCase {
 
     func test_초성_검색() async throws {
         let repo = try makeRepo(); try await seed(repo)
-        let hits = try await repo.search(.parse("ㅅㅇㄷ"), limit: 10)
+        let hits = try await repo.search(.parse("ㅅㅇㄷ"), filter: .all, limit: 10)
         XCTAssertEqual(hits.map(\.content), ["사이드노트 조사"])
     }
     func test_자모_검색_조합_중_입력() async throws {
         let repo = try makeRepo(); try await seed(repo)
-        let hits = try await repo.search(.parse("사이ㄷ"), limit: 10)
+        let hits = try await repo.search(.parse("사이ㄷ"), filter: .all, limit: 10)
         XCTAssertEqual(hits.map(\.content), ["사이드노트 조사"])
     }
     func test_영문_대소문자_무시() async throws {
         let repo = try makeRepo(); try await seed(repo)
-        let hits = try await repo.search(.parse("MEMO"), limit: 10)
+        let hits = try await repo.search(.parse("MEMO"), filter: .all, limit: 10)
         XCTAssertEqual(hits.map(\.content), ["Memo backup 확인"])
     }
     func test_태그_필터와_텍스트_AND_결합() async throws {
         let repo = try makeRepo(); try await seed(repo)
-        let hits = try await repo.search(.parse("#업무 회의"), limit: 10)
+        let hits = try await repo.search(.parse("#업무 회의"), filter: .all, limit: 10)
         XCTAssertEqual(hits.map(\.content), ["회의 정리 #업무"])
-        let miss = try await repo.search(.parse("#업무 사이드"), limit: 10)
+        let miss = try await repo.search(.parse("#업무 사이드"), filter: .all, limit: 10)
         XCTAssertEqual(miss, [])
     }
     func test_LIKE_특수문자는_이스케이프() async throws {
         let repo = try makeRepo()
         try await repo.save(Note(id: UUID(), content: "진행률 100% 달성",
                                  createdAt: Date(), updatedAt: nil))
-        let hits = try await repo.search(.parse("100%"), limit: 10)
+        let hits = try await repo.search(.parse("100%"), filter: .all, limit: 10)
         XCTAssertEqual(hits.map(\.content), ["진행률 100% 달성"])
-        let miss = try await repo.search(.parse("1%0"), limit: 10)  // %가 와일드카드로 동작하면 매치돼버림
+        let miss = try await repo.search(.parse("1%0"), filter: .all, limit: 10)  // %가 와일드카드로 동작하면 매치돼버림
         XCTAssertEqual(miss, [])
     }
     func test_결과는_최신순() async throws {
@@ -61,7 +61,7 @@ final class SearchTests: XCTestCase {
         let base = Date(timeIntervalSince1970: 1_756_700_000)
         try await repo.save(Note(id: UUID(), content: "사이드노트 두 번째",
                                  createdAt: base, updatedAt: nil))
-        let hits = try await repo.search(.parse("사이드"), limit: 10)
+        let hits = try await repo.search(.parse("사이드"), filter: .all, limit: 10)
         XCTAssertEqual(hits.map(\.content), ["사이드노트 두 번째", "사이드노트 조사"])
     }
 
@@ -79,7 +79,7 @@ final class SearchTests: XCTestCase {
 
         let clock = ContinuousClock()
         let elapsed = try await clock.measure {
-            let hits = try await repo.search(.parse("ㅅㅇㄷㄴㅌ"), limit: 100)
+            let hits = try await repo.search(.parse("ㅅㅇㄷㄴㅌ"), filter: .all, limit: 100)
             XCTAssertEqual(hits.count, 1)
         }
         XCTAssertLessThan(elapsed, .milliseconds(500), "1만 건 초성 검색이 500ms를 넘음: \(elapsed)")

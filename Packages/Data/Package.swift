@@ -14,6 +14,9 @@ let package = Package(
             "Domain",
             .product(name: "GRDB", package: "GRDB.swift"),
         ]),
-        .testTarget(name: "DataTests", dependencies: ["Data"]),
+        .testTarget(name: "DataTests", dependencies: [
+            "Data",
+            .product(name: "GRDB", package: "GRDB.swift"),
+        ]),
     ]
 )

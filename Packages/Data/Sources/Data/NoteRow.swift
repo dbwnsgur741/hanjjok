@@ -23,11 +23,14 @@ struct NoteRow: Codable, FetchableRecord, PersistableRecord {
     var updatedAt: Date?
     var jamo: String
     var choseong: String
+    /// [v1.1] 소속 폴더 id. nil이면 미분류. 폴더 삭제 시 FK ON DELETE SET NULL로 자동 전환된다.
+    var folderId: String?
 
     enum CodingKeys: String, CodingKey {
         case id, content, jamo, choseong
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case folderId = "folder_id"
     }
 
     init(from note: Note) {
@@ -37,10 +40,12 @@ struct NoteRow: Codable, FetchableRecord, PersistableRecord {
         updatedAt = note.updatedAt
         jamo = HangulIndexer.jamo(note.content)
         choseong = HangulIndexer.choseong(note.content)
+        folderId = note.folderId?.uuidString
     }
 
     func toNote() -> Note? {
         guard let uuid = UUID(uuidString: id) else { return nil }
-        return Note(id: uuid, content: content, createdAt: createdAt, updatedAt: updatedAt)
+        return Note(id: uuid, content: content, createdAt: createdAt, updatedAt: updatedAt,
+                    folderId: folderId.flatMap(UUID.init(uuidString:)))
     }
 }
