@@ -70,7 +70,7 @@ struct NoteCardView: View {
             .font(HanjiTheme.uiFont(size: 12.5, weight: .semibold))
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(Capsule().fill(color.opacity(HanjiTheme.tagChipAlpha)))
+            .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(HanjiTheme.tagChipAlpha)))
             .foregroundStyle(color)
     }
 
