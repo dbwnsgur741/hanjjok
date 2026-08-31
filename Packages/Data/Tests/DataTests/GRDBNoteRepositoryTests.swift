@@ -79,4 +79,35 @@ final class GRDBNoteRepositoryTests: XCTestCase {
         let fetched = try await reopened.note(id: n.id)
         XCTAssertEqual(fetched?.content, "영속성 확인")
     }
+
+    func test_timeline_before가_nil이면_createdAt_내림차순으로_반환() async throws {
+        let repo = try makeRepo()
+        let t0 = Date(timeIntervalSince1970: 1_000.123)
+        let t1 = Date(timeIntervalSince1970: 2_000.456)
+        let t2 = Date(timeIntervalSince1970: 3_000.789)
+        try await repo.save(note("n0", at: t0))
+        try await repo.save(note("n1", at: t1))
+        try await repo.save(note("n2", at: t2))
+
+        let all = try await repo.timeline(before: nil, limit: 10)
+        XCTAssertEqual(all.map { $0.content }, ["n2", "n1", "n0"])
+    }
+
+    func test_timeline_before_지정시_해당_시각_이후를_제외하고_limit을_적용한다() async throws {
+        let repo = try makeRepo()
+        let t0 = Date(timeIntervalSince1970: 1_000.123)
+        let t1 = Date(timeIntervalSince1970: 2_000.456)
+        let t2 = Date(timeIntervalSince1970: 3_000.789)
+        try await repo.save(note("n0", at: t0))
+        try await repo.save(note("n1", at: t1))
+        try await repo.save(note("n2", at: t2))
+
+        // t2 자신을 포함해 t2 이후는 제외되어야 한다 (createdAt < before).
+        let beforeT2 = try await repo.timeline(before: t2, limit: 10)
+        XCTAssertEqual(beforeT2.map { $0.content }, ["n1", "n0"])
+
+        // limit이 적용되어 최신 2건만 반환되어야 한다.
+        let limited = try await repo.timeline(before: nil, limit: 2)
+        XCTAssertEqual(limited.map { $0.content }, ["n2", "n1"])
+    }
 }
