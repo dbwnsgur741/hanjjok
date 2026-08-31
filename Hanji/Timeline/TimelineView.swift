@@ -50,32 +50,42 @@ struct TimelineView: View {
 
     private var content: some View {
         VStack(spacing: 0) {
+            // 헤더 — 검색 바보다 위, 패널 최상단.
+            HeaderView(
+                filterName: "전체",  // Task 18에서 실제 필터 바인딩으로 교체 예정
+                onSearch: { model.isSearching = true },
+                onSettings: { (NSApp.delegate as? AppDelegate)?.openSettings() })
+            Divider()
             if model.isSearching {
                 searchBar
                 Divider()
             }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: HanjiTheme.cardSpacing) {
-                        ForEach(groupedByDay(), id: \.day) { group in
-                            DaySeparator(label: group.label)
-                            ForEach(group.notes) { note in
-                                NoteCardView(note: note, model: model)
-                                    .id(note.id)
-                                    // 카드 안착 모션 — 전송 시 아래에서 사뿐히 올라온다.
-                                    // TimelineModel.submit/delete가 HanjiTheme.motion으로 감싸며,
-                                    // 그 안에서 '동작 줄이기' 존중 여부를 이미 판단한다.
-                                    .transition(.asymmetric(
-                                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                                        removal: .opacity))
+            if model.displayedNotes.isEmpty && !model.isSearching && model.draft.isEmpty {
+                EmptyStateView()
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: HanjiTheme.cardSpacing) {
+                            ForEach(groupedByDay(), id: \.day) { group in
+                                DaySeparator(label: group.label)
+                                ForEach(group.notes) { note in
+                                    NoteCardView(note: note, model: model)
+                                        .id(note.id)
+                                        // 카드 안착 모션 — 전송 시 아래에서 사뿐히 올라온다.
+                                        // TimelineModel.submit/delete가 HanjiTheme.motion으로 감싸며,
+                                        // 그 안에서 '동작 줄이기' 존중 여부를 이미 판단한다.
+                                        .transition(.asymmetric(
+                                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                                            removal: .opacity))
+                                }
                             }
                         }
+                        .padding(HanjiTheme.panelHorizontalMargin)
                     }
-                    .padding(HanjiTheme.panelHorizontalMargin)
-                }
-                .onChange(of: model.displayedNotes.count) {
-                    if let last = model.displayedNotes.last {
-                        proxy.scrollTo(last.id, anchor: .bottom)
+                    .onChange(of: model.displayedNotes.count) {
+                        if let last = model.displayedNotes.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
                     }
                 }
             }

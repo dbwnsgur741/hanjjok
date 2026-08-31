@@ -8,6 +8,11 @@ struct PanelRootView: View {
 
     var body: some View {
         TimelineView(model: model)
+            // [v1.1] 플로팅 패널 — "벽에 붙은 판"이 아니라 "떠 있는 종이": 네 모서리를
+            // 라운드로 클립하고 바깥에 그림자를 드리운다. SlidePanel 배경은 이미 clear이므로
+            // 클립 밖(모서리 바깥) 영역은 그대로 투명하게 비친다.
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.28), radius: 24, y: 8)
             // 삭제 복구 — 카드 안 인라인 수정에 포커스가 없을 때만 여기까지 전파된다.
             .onKeyPress(KeyEquivalent("z"), phases: .down) { press in
                 guard press.modifiers.contains(.command) else { return .ignored }
