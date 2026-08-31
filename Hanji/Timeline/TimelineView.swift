@@ -8,6 +8,7 @@ private let timelineLog = Logger(subsystem: "kr.hurdlers.Hanji", category: "time
 struct TimelineView: View {
     @Bindable var model: TimelineModel
     @Environment(\.colorScheme) private var scheme
+    @FocusState private var searchFieldFocused: Bool
 
     private var paper: Color { scheme == .dark ? HanjiTheme.paperDark : HanjiTheme.paperLight }
     private var ink: Color { scheme == .dark ? HanjiTheme.inkDark : HanjiTheme.inkLight }
@@ -36,10 +37,17 @@ struct TimelineView: View {
         .background(paper)
         .foregroundStyle(ink)
         .task { await model.load() }
+        .onChange(of: model.isSearching) {
+            searchFieldFocused = model.isSearching
+        }
     }
 
     private var content: some View {
         VStack(spacing: 0) {
+            if model.isSearching {
+                searchBar
+                Divider()
+            }
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: HanjiTheme.cardSpacing) {
@@ -69,6 +77,28 @@ struct TimelineView: View {
         }
     }
 
+    /// 검색 바 — tokens.md "검색 입력 Pretendard 14pt". 활성 태그 필터는 기존 태그 칩과
+    /// 같은 스타일(r3 라운드 사각형 · 12% 알파, Task 12 review fix)로 통일해 보여준다.
+    private var searchBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").opacity(0.5)
+            TextField("검색 (초성 가능)", text: $model.searchText)
+                .textFieldStyle(.plain)
+                .font(HanjiTheme.uiFont(size: 14))
+                .focused($searchFieldFocused)
+            if let tag = model.activeTag {
+                let color = HanjiTheme.tagColor(tag, dark: scheme == .dark)
+                Text("#\(tag)")
+                    .font(HanjiTheme.uiFont(size: 12.5, weight: .semibold))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(HanjiTheme.tagChipAlpha)))
+                    .foregroundStyle(color)
+            }
+        }
+        .padding(10)
+    }
+
     private var grainOverlay: some View {
         Rectangle()
             .fill(grainTint)
@@ -91,7 +121,7 @@ struct TimelineView: View {
         df.dateFormat = "M월 d일"
         df.locale = Locale(identifier: "ko_KR")
         var groups: [DayGroup] = []
-        for note in model.notes {
+        for note in model.displayedNotes {
             let label: String
             if cal.isDateInToday(note.createdAt) { label = "오늘" }
             else if cal.isDateInYesterday(note.createdAt) { label = "어제" }
