@@ -77,7 +77,13 @@ public final class GRDBNoteRepository: NoteRepository, @unchecked Sendable {
         try await pool.read { db in
             var request = NoteRow.order(Column("created_at").desc).limit(limit)
             if let before {
-                request = NoteRow.filter(Column("created_at") < before)
+                // created_at은 NoteRow의 .timeIntervalSinceReferenceDate 전략으로
+                // REAL(배정밀도 실수)로 저장된다. 여기서 Date를 직접 비교하면 기본
+                // Date.databaseValue(문자열)로 인코딩되어 REAL < TEXT가 되고,
+                // SQLite의 타입 정렬 순서상 REAL은 항상 TEXT보다 작다고 취급되어
+                // 필터가 사실상 무시된다. 저장과 동일한 표현(timeIntervalSinceReferenceDate)
+                // 으로 명시 변환해 비교해야 한다.
+                request = NoteRow.filter(Column("created_at") < before.timeIntervalSinceReferenceDate)
                     .order(Column("created_at").desc).limit(limit)
             }
             return try request.fetchAll(db).compactMap { $0.toNote() }
