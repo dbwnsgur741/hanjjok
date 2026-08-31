@@ -103,8 +103,46 @@ public final class GRDBNoteRepository: NoteRepository, @unchecked Sendable {
     }
 
     public func search(_ query: SearchQuery, limit: Int) async throws -> [Note] {
-        // Task 6에서 구현. 프로토콜 준수를 위한 임시 스텁.
-        []
+        try await pool.read { db in
+            var conditions: [String] = []
+            var args: [DatabaseValueConvertible] = []
+
+            switch query.text {
+            case .choseong(let q):
+                conditions.append("choseong LIKE ? ESCAPE '\\'")
+                args.append("%\(Self.escapeLike(q))%")
+            case .jamo(let q):
+                conditions.append("jamo LIKE ? ESCAPE '\\'")
+                args.append("%\(Self.escapeLike(q))%")
+            case .plain(let q):
+                conditions.append("lower(content) LIKE ? ESCAPE '\\'")
+                args.append("%\(Self.escapeLike(q))%")
+            case nil:
+                break
+            }
+
+            if !query.tags.isEmpty {
+                let placeholders = Array(repeating: "?", count: query.tags.count).joined(separator: ", ")
+                conditions.append("""
+                    id IN (SELECT note_id FROM note_tag WHERE tag IN (\(placeholders))
+                           GROUP BY note_id HAVING COUNT(DISTINCT tag) = \(query.tags.count))
+                    """)
+                args.append(contentsOf: query.tags)
+            }
+
+            let whereClause = conditions.isEmpty ? "1" : conditions.joined(separator: " AND ")
+            let rows = try NoteRow.fetchAll(
+                db,
+                sql: "SELECT * FROM note WHERE \(whereClause) ORDER BY created_at DESC LIMIT \(limit)",
+                arguments: StatementArguments(args))
+            return rows.compactMap { $0.toNote() }
+        }
+    }
+
+    static func escapeLike(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "%", with: "\\%")
+            .replacingOccurrences(of: "_", with: "\\_")
     }
 
     public func backup(to url: URL) throws {
