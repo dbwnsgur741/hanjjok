@@ -5,3 +5,7 @@ build/
 .build/
 *.xcodeproj
 .swiftpm/
+*.o
+*.d
+*.swiftdeps
+*.swiftdeps~
