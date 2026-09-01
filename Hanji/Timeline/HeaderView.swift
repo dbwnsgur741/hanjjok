@@ -2,8 +2,9 @@ import SwiftUI
 import AppKit
 
 /// [v1.1] 앱 크롬 — 사용자 피드백("메모앱 느낌이 안 남") 대응 상단 헤더.
-/// 좌: "한지" 워드마크 + 현재 필터명. 우: 검색·서랍·설정 아이콘.
-/// 서랍(tray) 액션은 Task 18(폴더 드로어)에서 채워질 자리 — 지금은 빈 클로저를 기본값으로 주입한다.
+/// 좌: "한지" 워드마크 + 현재 필터명(전체/미분류/폴더명/#태그, TimelineModel.filterName).
+/// 우: 검색·서랍·설정 아이콘. 서랍(tray) 액션은 TimelineModel.toggleDrawer()에 연결된다
+/// (Task 18) — onTray 기본값은 단위 프리뷰 등에서 값을 안 넘겨도 되게 하는 빈 클로저.
 struct HeaderView: View {
     let filterName: String
     var onSearch: () -> Void

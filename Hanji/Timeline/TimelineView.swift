@@ -52,10 +52,26 @@ struct TimelineView: View {
         VStack(spacing: 0) {
             // 헤더 — 검색 바보다 위, 패널 최상단.
             HeaderView(
-                filterName: "전체",  // Task 18에서 실제 필터 바인딩으로 교체 예정
+                filterName: model.filterName,
                 onSearch: { model.isSearching = true },
+                onTray: { model.toggleDrawer() },
                 onSettings: { (NSApp.delegate as? AppDelegate)?.openSettings() })
             Divider()
+            // 헤더 아래 전체(검색바·타임라인·컴포저) 위에 드로어를 오버레이로 얹는다.
+            // 그레인 오버레이(body의 바깥 ZStack)는 이 ZStack보다 한 겹 더 위에 있으므로
+            // "패널 최상단 유지" 원칙대로 드로어 위에도 그대로 덮인다.
+            ZStack(alignment: .top) {
+                mainArea
+                if model.isDrawerOpen {
+                    DrawerView(model: model)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+        }
+    }
+
+    private var mainArea: some View {
+        VStack(spacing: 0) {
             if model.isSearching {
                 searchBar
                 Divider()

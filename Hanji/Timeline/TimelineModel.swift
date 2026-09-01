@@ -30,16 +30,50 @@ final class TimelineModel {
         SearchQuery.parse(searchText).text
     }
 
+    // MARK: - 폴더·서랍 (Task 18)
+
+    /// 타임라인·검색에 적용하는 폴더 스코프. 변경 시 타임라인을 재로드하고, 검색/태그 필터
+    /// 중이면 그 조건 그대로 재검색한다(폴더 내 검색 — NoteRepository가 filter를
+    /// AND 결합해 지원).
+    var folderFilter: FolderFilter = .all {
+        didSet {
+            guard folderFilter != oldValue else { return }
+            Task { [weak self] in await self?.applyFolderFilterChange() }
+        }
+    }
+    var folders: [Folder] = []
+    var counts: FolderCounts?
+    var tagCounts: [TagCount] = []
+    /// 드로어 열림 상태. true로 바뀔 때만 폴더·카운트를 재로드해 최신화한다.
+    var isDrawerOpen = false {
+        didSet {
+            guard isDrawerOpen, isDrawerOpen != oldValue else { return }
+            Task { [weak self] in await self?.loadFolderData() }
+        }
+    }
+
+    /// 헤더에 표시할 현재 필터명 — 태그 필터가 있으면 그것을 우선 표시(검색 중에도 유지),
+    /// 없으면 폴더 스코프(전체/미분류/폴더명)를 표시한다.
+    var filterName: String {
+        if let tag = activeTag { return "#\(tag)" }
+        switch folderFilter {
+        case .all: return "전체"
+        case .unfiled: return "미분류"
+        case .folder(let id): return folders.first(where: { $0.id == id })?.name ?? "폴더"
+        }
+    }
+
     init(repo: any NoteRepository) {
         self.repo = repo
     }
 
     func load() async {
         do {
-            notes = try await repo.timeline(filter: .all, before: nil, limit: 300).reversed()
+            notes = try await repo.timeline(filter: folderFilter, before: nil, limit: 300).reversed()
         } catch {
             log.error("타임라인 로드 실패: \(error)")
         }
+        await loadFolderData()
     }
 
     func submit() async {
@@ -119,10 +153,83 @@ final class TimelineModel {
             }
             do {
                 // 검색 결과도 타임라인처럼 오래된 것 위, 최신 아래로 표시
-                self.searchResults = try await self.repo.search(query, filter: .all, limit: 200).reversed()
+                self.searchResults = try await self.repo.search(
+                    query, filter: self.folderFilter, limit: 200
+                ).reversed()
             } catch {
                 self.log.error("검색 실패: \(error)")
             }
+        }
+    }
+
+    // MARK: - 폴더 CRUD (Task 18)
+
+    func createFolder(name: String) async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let nextOrder = (folders.map(\.sortOrder).max() ?? -1) + 1
+        let folder = Folder(id: UUID(), name: trimmed, sortOrder: nextOrder, createdAt: Date())
+        do {
+            try await repo.saveFolder(folder)
+            await loadFolderData()
+        } catch {
+            log.error("폴더 생성 실패: \(error)")
+        }
+    }
+
+    func renameFolder(_ folder: Folder, to name: String) async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var updated = folder
+        updated.name = trimmed
+        do {
+            try await repo.saveFolder(updated)
+            await loadFolderData()
+        } catch {
+            log.error("폴더 이름 변경 실패: \(error)")
+        }
+    }
+
+    func deleteFolder(_ folder: Folder) async {
+        do {
+            try await repo.deleteFolder(id: folder.id)
+            // 삭제된 폴더를 보고 있었다면 전체 스코프로 되돌린다(didSet이 타임라인을 재로드한다).
+            if case .folder(let id) = folderFilter, id == folder.id {
+                folderFilter = .all
+            }
+            await load()
+        } catch {
+            log.error("폴더 삭제 실패: \(error)")
+        }
+    }
+
+    /// 서랍 토글 — HanjiTheme.motion으로 ≤200ms 슬라이드 애니메이션(동작 줄이기 존중)을 적용한다.
+    func toggleDrawer() {
+        HanjiTheme.motion { isDrawerOpen.toggle() }
+    }
+
+    /// 스크림 탭·행 선택·Esc 등 "닫기"만 하는 경로에서 공용으로 쓰는 헬퍼.
+    func closeDrawer() {
+        guard isDrawerOpen else { return }
+        HanjiTheme.motion { isDrawerOpen = false }
+    }
+
+    private func applyFolderFilterChange() async {
+        do {
+            notes = try await repo.timeline(filter: folderFilter, before: nil, limit: 300).reversed()
+        } catch {
+            log.error("타임라인 로드 실패: \(error)")
+        }
+        if isSearching || activeTag != nil { scheduleSearch() }
+    }
+
+    private func loadFolderData() async {
+        do {
+            folders = try await repo.folders()
+            counts = try await repo.folderCounts()
+            tagCounts = try await repo.tagCounts()
+        } catch {
+            log.error("폴더 데이터 로드 실패: \(error)")
         }
     }
 }

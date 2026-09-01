@@ -26,10 +26,15 @@ struct PanelRootView: View {
                 model.isSearching = true
                 return .handled
             }
-            // Esc — 1차: 검색/태그 필터 중이면 종료. 2차: 패널을 닫는다.
-            // (카드 인라인 수정 중 Esc는 NoteCardView.onExitCommand가 더 안쪽에서 먼저 소비한다.)
+            // Esc 라우팅 우선순위(Task 18): 드로어 열림 > 수정 중 > 검색 중 > 패널 닫기.
+            // "수정 중"은 이 핸들러가 아니라 NoteCardView.onExitCommand(카드 인라인 수정)나
+            // DrawerView의 인라인 이름 입력 필드의 onExitCommand가 responder 체인에서 더
+            // 안쪽(깊은 뷰)에 있어 먼저 이벤트를 소비하므로, 여기서는 그 다음 두 우선순위만
+            // 판단하면 된다.
             .onExitCommand {
-                if model.isSearching || model.activeTag != nil {
+                if model.isDrawerOpen {
+                    model.closeDrawer()
+                } else if model.isSearching || model.activeTag != nil {
                     model.exitSearch()
                 } else {
                     (NSApp.delegate as? AppDelegate)?.panelController.hide()

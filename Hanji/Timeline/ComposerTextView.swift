@@ -8,6 +8,10 @@ struct ComposerTextView: NSViewRepresentable {
     @Binding var text: String
     var font: NSFont
     var onSubmit: () -> Void
+    /// [Task 18] 한 줄 입력 모드(폴더명 생성·이름변경 등) — 여백을 좁히고, Shift+Enter도
+    /// 줄바꿈 없이 제출로 처리한다(이름 필드는 줄바꿈이 필요 없음). 기본값 false는 기존
+    /// 다중행 컴포저(메모 작성·인라인 수정) 동작을 그대로 유지한다.
+    var singleLine: Bool = false
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -19,7 +23,9 @@ struct ComposerTextView: NSViewRepresentable {
         textView.isRichText = false
         textView.allowsUndo = true
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 12, height: 10)
+        textView.textContainerInset = singleLine
+            ? NSSize(width: 6, height: 3)
+            : NSSize(width: 12, height: 10)
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = false
         return scroll
@@ -44,8 +50,11 @@ struct ComposerTextView: NSViewRepresentable {
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             if selector == #selector(NSResponder.insertNewline(_:)) {
-                // Shift+Enter는 줄바꿈으로 통과
-                if NSApp.currentEvent?.modifierFlags.contains(.shift) == true { return false }
+                // Shift+Enter는 줄바꿈으로 통과 — 단, 한 줄 모드(이름 필드)는 줄바꿈이 필요
+                // 없으므로 항상 제출 처리한다.
+                if !parent.singleLine, NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
+                    return false
+                }
                 parent.onSubmit()
                 return true
             }
