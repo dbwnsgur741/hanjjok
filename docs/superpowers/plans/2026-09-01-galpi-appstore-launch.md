@@ -63,7 +63,7 @@ open build/Build/Products/Debug/Galpi.app
 - Consumes: 없음 (첫 태스크)
 - Produces: 내보내기 헤더 문자열 `"# 갈피 전체 내보내기\n"`, 백업 파일명 규칙 `galpi-YYYY-MM-DD.sqlite`. Task 2의 App 계층이 이 규칙에 의존한다
 
-- [ ] **Step 1: 테스트 기대값을 새 이름으로 고친다 (실패 유도)**
+- [x] **Step 1: 테스트 기대값을 새 이름으로 고친다 (실패 유도)**
 
 `Packages/Domain/Tests/DomainTests/MarkdownExporterTests.swift` — 18행과 33행의 `한지`를 `갈피`로:
 
@@ -83,7 +83,7 @@ sed -i '' 's/hanji/galpi/g' Packages/Data/Tests/DataTests/BackupSchedulerTests.s
 
 이러면 36·56·57·66행의 기대 파일명이 `galpi-2026-08-31.sqlite` 등으로 바뀐다.
 
-- [ ] **Step 2: 테스트를 돌려 실패를 확인한다**
+- [x] **Step 2: 테스트를 돌려 실패를 확인한다**
 
 ```bash
 swift test --package-path Packages/Domain --filter MarkdownExporterTests
@@ -94,7 +94,7 @@ Expected: 두 스위트 모두 FAIL.
 - `MarkdownExporterTests` → `XCTAssertEqual failed: ("# 한지 전체 내보내기\n") is not equal to ("# 갈피 전체 내보내기\n")`
 - `BackupSchedulerTests` → `("["hanji-2026-08-31.sqlite"]") is not equal to ("["galpi-2026-08-31.sqlite"]")`
 
-- [ ] **Step 3: 소스를 고친다**
+- [x] **Step 3: 소스를 고친다**
 
 `Packages/Domain/Sources/Domain/MarkdownExporter.swift:16`:
 
@@ -114,7 +114,7 @@ Expected: 두 스위트 모두 FAIL.
 
 > 두 곳을 함께 바꿔야 한다. 생성만 `galpi-`로 바꾸고 필터를 `hanji-`로 두면 **보관 개수 정리가 영구히 동작하지 않아** 백업이 무한정 쌓인다. 테스트 `keepsOnlyRecent`가 이걸 잡는다.
 
-- [ ] **Step 4: 테스트를 돌려 통과를 확인한다**
+- [x] **Step 4: 테스트를 돌려 통과를 확인한다**
 
 ```bash
 swift test --package-path Packages/Domain
@@ -123,7 +123,7 @@ swift test --package-path Packages/Data
 
 Expected: 두 패키지 전체 스위트 PASS.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add Packages/Domain Packages/Data
@@ -149,7 +149,7 @@ git commit -m "refactor: Domain·Data 계층 산출물 문자열 한지→갈피
 - Consumes: Task 1의 백업 파일명 규칙 `galpi-YYYY-MM-DD.sqlite`
 - Produces: 타깃명 `Galpi`, 스킴 `Galpi`, 번들 ID `kr.hurdlers.Galpi`, 앱 지원 디렉터리명 `Galpi`, DB 파일명 `galpi.sqlite`. Task 3의 entitlements 경로와 Task 5의 서명 설정이 이 타깃명에 의존한다
 
-- [ ] **Step 1: 디렉터리와 파일을 옮긴다**
+- [x] **Step 1: 디렉터리와 파일을 옮긴다**
 
 ```bash
 git mv Hanji Galpi
@@ -158,7 +158,7 @@ git mv Galpi/Theme/HanjiTheme.swift Galpi/Theme/GalpiTheme.swift
 git mv Galpi/Resources/Textures/HanjiGrain.png Galpi/Resources/Textures/GalpiGrain.png
 ```
 
-- [ ] **Step 2: 심볼을 치환한다**
+- [x] **Step 2: 심볼을 치환한다**
 
 ```bash
 find Galpi -name "*.swift" -exec sed -i '' \
@@ -167,7 +167,7 @@ find Galpi -name "*.swift" -exec sed -i '' \
   -e 's/HanjiGrain/GalpiGrain/g' {} +
 ```
 
-- [ ] **Step 3: 사용자에게 보이는 한국어 문자열을 바꾼다**
+- [x] **Step 3: 사용자에게 보이는 한국어 문자열을 바꾼다**
 
 `sed`로 일괄 치환하지 말 것 — 주석과 UI 문자열이 섞여 있어 문맥 확인이 필요하다. 아래 5곳을 직접 편집한다:
 
@@ -198,7 +198,7 @@ find Galpi -name "*.swift" -exec sed -i '' \
 
 주석 2곳(`Galpi/Theme/GalpiTheme.swift:109`, `Galpi/Timeline/HeaderView.swift:5`)의 `"한지"` 워드마크 언급도 `"갈피"`로 고친다.
 
-- [ ] **Step 4: DB 경로를 바꾼다**
+- [x] **Step 4: DB 경로를 바꾼다**
 
 `Galpi/GalpiApp.swift:37-41`:
 
@@ -212,7 +212,7 @@ find Galpi -name "*.swift" -exec sed -i '' \
 
 > `.applicationSupportDirectory`는 샌드박스가 켜지면 자동으로 컨테이너 안으로 리다이렉트된다. Task 3에서 코드를 또 고칠 필요가 없다.
 
-- [ ] **Step 5: `project.yml`을 갱신한다**
+- [x] **Step 5: `project.yml`을 갱신한다**
 
 ```yaml
 name: Galpi
@@ -257,11 +257,11 @@ targets:
 
 > `CODE_SIGN_IDENTITY`와 `ENABLE_HARDENED_RUNTIME`은 이 태스크에서 **그대로 둔다.** Task 5에서 한꺼번에 바꿔야 로컬 빌드가 중간에 깨지지 않는다.
 
-- [ ] **Step 6: `.gitignore`를 갱신한다**
+- [x] **Step 6: `.gitignore`를 갱신한다**
 
 `Hanji/Info.plist` 줄을 `Galpi/Info.plist`로 바꾼다.
 
-- [ ] **Step 7: 빌드하고 실행해 확인한다**
+- [x] **Step 7: 빌드하고 실행해 확인한다**
 
 ```bash
 rm -rf Hanji.xcodeproj build
@@ -274,7 +274,7 @@ Expected: 빌드 성공. 메뉴바에 아이콘이 뜨고, ⌥Space로 패널이
 
 > 이 시점에는 앱이 빈 DB로 시작한다 (`Galpi/galpi.sqlite`가 새로 생성됨). 기존 메모는 Task 4에서 옮긴다. 놀라지 말 것.
 
-- [ ] **Step 8: 남은 참조가 없는지 검증한다**
+- [x] **Step 8: 남은 참조가 없는지 검증한다**
 
 ```bash
 grep -rn "Hanji\|hanji" --include="*.swift" --include="*.yml" --include="*.gitignore" Galpi/ Packages/ project.yml .gitignore | grep -v build/ | grep -v "\.build/"
@@ -282,7 +282,7 @@ grep -rn "Hanji\|hanji" --include="*.swift" --include="*.yml" --include="*.gitig
 
 Expected: 출력 없음. 무언가 나오면 문맥을 보고 고친 뒤 Step 7을 다시 돌린다.
 
-- [ ] **Step 9: 커밋**
+- [x] **Step 9: 커밋**
 
 ```bash
 git add -A
@@ -306,7 +306,7 @@ Mac App Store의 **유일한 하드 블로커**다. `com.apple.security.app-sand
 - Consumes: Task 2의 타깃명 `Galpi`, 번들 ID `kr.hurdlers.Galpi`
 - Produces: 샌드박스 컨테이너 경로 `~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application Support/Galpi/`. Task 4의 데이터 이관이 이 경로에 의존한다
 
-- [ ] **Step 1: entitlements 파일을 만든다**
+- [x] **Step 1: entitlements 파일을 만든다**
 
 `Galpi/Galpi.entitlements`:
 
@@ -327,7 +327,7 @@ Mac App Store의 **유일한 하드 블로커**다. `com.apple.security.app-sand
 >
 > **넣지 말아야 할 것:** `com.apple.security.network.client` — 이 앱은 네트워크를 쓰지 않는다. 습관적으로 넣으면 개인정보 라벨 심사에서 불필요한 질문을 받는다.
 
-- [ ] **Step 2: `project.yml`에 entitlements를 연결한다**
+- [x] **Step 2: `project.yml`에 entitlements를 연결한다**
 
 `targets.Galpi.settings.base`에 한 줄 추가:
 
@@ -340,7 +340,7 @@ Mac App Store의 **유일한 하드 블로커**다. `com.apple.security.app-sand
         CODE_SIGN_ENTITLEMENTS: Galpi/Galpi.entitlements
 ```
 
-- [ ] **Step 3: 빌드하고 샌드박스가 실제로 켜졌는지 확인한다**
+- [x] **Step 3: 빌드하고 샌드박스가 실제로 켜졌는지 확인한다**
 
 ```bash
 xcodegen generate
@@ -350,7 +350,7 @@ codesign -d --entitlements - build/Build/Products/Debug/Galpi.app
 
 Expected: 출력에 `com.apple.security.app-sandbox` → `true`가 보인다.
 
-- [ ] **Step 4: 컨테이너가 생성되는지 확인한다**
+- [x] **Step 4: 컨테이너가 생성되는지 확인한다**
 
 ```bash
 open build/Build/Products/Debug/Galpi.app
@@ -360,7 +360,7 @@ ls -la ~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application\ Support/
 
 Expected: `galpi.sqlite`와 `Backups/`가 컨테이너 **안에** 생성되어 있다. `~/Library/Application Support/Galpi/`에는 아무것도 안 생긴다.
 
-- [ ] **Step 5: 샌드박스에서 깨지기 쉬운 4가지를 수동 검증한다**
+- [x] **Step 5: 샌드박스에서 깨지기 쉬운 4가지를 수동 검증한다**
 
 아래를 직접 눌러보고 전부 통과해야 한다. 하나라도 실패하면 원인을 규명하기 전까지 다음 태스크로 넘어가지 않는다:
 
@@ -369,7 +369,7 @@ Expected: `galpi.sqlite`와 `Backups/`가 컨테이너 **안에** 생성되어 �
 3. **전체 내보내기** — 우클릭 메뉴 → "전체 내보내기…" → 바탕화면에 저장 → **파일이 실제로 생성되고 내용이 올바르다**
 4. **로그인 시 자동 시작** — 설정에서 토글 켜고 `SMAppService.mainApp.status`가 `.enabled`가 되는지 확인. 껐다 켜기도 해본다
 
-- [ ] **Step 6: QA 체크리스트에 샌드박스 항목을 추가한다**
+- [x] **Step 6: QA 체크리스트에 샌드박스 항목을 추가한다**
 
 `docs/qa-checklist.md`의 "## 데이터" 섹션 앞에 새 섹션을 넣는다:
 
@@ -400,7 +400,7 @@ git commit -m "feat: App Sandbox entitlement 도입 — Mac App Store 요구사�
 
 **Files:** 없음 (코드 변경 없음)
 
-- [ ] **Step 1: 앱을 종료한다**
+- [x] **Step 1: 앱을 종료한다**
 
 WAL이 열린 채로 복사하면 데이터가 유실될 수 있다. 메뉴바 → "갈피 종료"로 확실히 끈다.
 
@@ -410,7 +410,7 @@ pgrep -x Galpi || echo "종료됨 — 진행 가능"
 
 Expected: `종료됨 — 진행 가능`
 
-- [ ] **Step 2: WAL을 본체에 합친다**
+- [x] **Step 2: WAL을 본체에 합친다**
 
 ```bash
 sqlite3 ~/Library/Application\ Support/Hanji/hanji.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
@@ -418,7 +418,7 @@ sqlite3 ~/Library/Application\ Support/Hanji/hanji.sqlite "PRAGMA wal_checkpoint
 
 Expected: `0|N|N` 형태의 출력. WAL 파일 크기가 0에 가까워진다.
 
-- [ ] **Step 3: 컨테이너로 복사한다 (이동 아님)**
+- [x] **Step 3: 컨테이너로 복사한다 (이동 아님)**
 
 ```bash
 DEST=~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application\ Support/Galpi
@@ -431,7 +431,7 @@ Expected: `galpi.sqlite`가 원본과 같은 크기로 존재한다.
 
 > **복사이지 이동이 아니다.** 원본 `~/Library/Application Support/Hanji/`는 롤백 안전망으로 남겨둔다. 몇 주 쓰고 문제없으면 그때 지운다.
 
-- [ ] **Step 4: 앱을 켜서 메모가 살아있는지 확인한다**
+- [x] **Step 4: 앱을 켜서 메모가 살아있는지 확인한다**
 
 ```bash
 open build/Build/Products/Debug/Galpi.app
@@ -621,7 +621,7 @@ git commit -m "feat: 앱 아이콘 에셋 카탈로그 추가"
 - Modify: `docs/qa-checklist.md`
 - Rename: 스펙 파일명은 **그대로 둔다** (날짜 기반 이력이므로 소급 변경하지 않는다)
 
-- [ ] **Step 1: 스펙에 v1.4 리브랜딩 항목을 추가한다**
+- [x] **Step 1: 스펙에 v1.4 리브랜딩 항목을 추가한다**
 
 `## 3. 확정 정책` 표에 행을 추가한다:
 
@@ -633,7 +633,7 @@ git commit -m "feat: 앱 아이콘 에셋 카탈로그 추가"
 
 §3의 기존 "저장 위치" 행과 §11의 "앱 아이콘 디자인", "앱 이름 표기" 항목도 갱신·해소 처리한다.
 
-- [ ] **Step 2: 커밋**
+- [x] **Step 2: 커밋**
 
 ```bash
 git add docs/
