@@ -36,3 +36,4 @@ targets:
         SWIFT_VERSION: "5.10"
         CODE_SIGN_IDENTITY: "-"
         ENABLE_HARDENED_RUNTIME: false
+        CODE_SIGN_ENTITLEMENTS: Galpi/Galpi.entitlements
