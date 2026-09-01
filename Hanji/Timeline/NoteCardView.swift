@@ -249,8 +249,15 @@ struct NoteCardView: View {
     /// (QA r3 ①) — SF 심볼을 버리고 커스텀 드로잉으로 교체: 미완료는 사각 inkSoft 1.5pt
     /// 외곽선(속 투명), 완료는 jjok 채움 위에 백색 굵은 체크마크. 버튼 라벨에 20x20 히트
     /// 영역을 명시해 시각 크기(15pt)보다 넉넉한 클릭 영역을 보장한다.
+    /// [QA r3 Fix round 1] `.firstTextBaseline`은 텍스트가 아닌 뷰(ZStack)에는 실제
+    /// 베이스라인이 없어 SwiftUI가 그 뷰의 "바닥 모서리"를 베이스라인 대용으로 쓴다 — 그
+    /// 결과 20×20 히트 프레임의 바닥이 본문 첫 줄 베이스라인에 맞춰지면서, 그 안의 15×15
+    /// 체크박스가 시각적으로 첫 줄보다 한참 위로 떠 보였다(리뷰 지적). `.top` 정렬로 바꾸고
+    /// 체크박스에 `.padding(.top, 2.5)`를 얹어 광학 보정한다: 15pt MaruBuri의 어센트가
+    /// 약 11~12pt이므로, 박스 상단을 2.5pt만큼 내리면 15pt 박스의 중심이 대략 첫 줄의
+    /// x-height 중간선 부근에 오도록 맞춰진다.
     private func checklistRow(_ item: ChecklistItem) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 7) {
+        HStack(alignment: .top, spacing: 7) {
             Button {
                 Task { await model.update(note, content: ChecklistParser.toggling(note.content, at: item)) }
             } label: {
@@ -273,6 +280,7 @@ struct NoteCardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .padding(.top, 2.5)
 
             Text(item.text)
                 .font(HanjiTheme.bodyFont())
