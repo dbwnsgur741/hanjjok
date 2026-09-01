@@ -14,12 +14,12 @@ struct MarkdownBody: View {
 
     @Environment(\.colorScheme) private var scheme
     private var isDark: Bool { scheme == .dark }
-    private var ink: Color { isDark ? HanjiTheme.inkDark : HanjiTheme.inkLight }
-    private var inkSoft: Color { isDark ? HanjiTheme.inkSoftDark : HanjiTheme.inkSoftLight }
-    private var jjok: Color { isDark ? HanjiTheme.jjokDark : HanjiTheme.jjokLight }
+    private var ink: Color { isDark ? GalpiTheme.inkDark : GalpiTheme.inkLight }
+    private var inkSoft: Color { isDark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
+    private var jjok: Color { isDark ? GalpiTheme.jjokDark : GalpiTheme.jjokLight }
 
     /// 본문 lineSpacing 공식 — NoteCardView.contentText/checklistRow와 동일한 계산.
-    private var bodyLineSpacing: CGFloat { (HanjiTheme.bodyLineHeightMultiple - 1) * 15 }
+    private var bodyLineSpacing: CGFloat { (GalpiTheme.bodyLineHeightMultiple - 1) * 15 }
 
     var body: some View {
         let blocks = MarkdownParser.blocks(in: content)
@@ -62,8 +62,8 @@ struct MarkdownBody: View {
 
     private func headingRow(level: Int, text: String, isFirst: Bool) -> some View {
         Text(inline(text))
-            .font(HanjiTheme.bodyBoldFont(size: headingSize(level)))
-            .lineSpacing((HanjiTheme.bodyLineHeightMultiple - 1) * headingSize(level))
+            .font(GalpiTheme.bodyBoldFont(size: headingSize(level)))
+            .lineSpacing((GalpiTheme.bodyLineHeightMultiple - 1) * headingSize(level))
             .textSelection(.enabled)
             .padding(.top, isFirst ? 0 : 6)
             .padding(.bottom, 2)
@@ -107,7 +107,7 @@ struct MarkdownBody: View {
             .padding(.top, 2.5)
 
             Text(inline(item.text))
-                .font(HanjiTheme.bodyFont())
+                .font(GalpiTheme.bodyFont())
                 .lineSpacing(bodyLineSpacing)
                 .strikethrough(item.isChecked)
                 .foregroundStyle(item.isChecked ? inkSoft : ink)
@@ -120,11 +120,11 @@ struct MarkdownBody: View {
     private func bulletRow(_ text: String) -> some View {
         HStack(alignment: .top, spacing: 7) {
             Text("•")
-                .font(HanjiTheme.uiFont(size: 13))
+                .font(GalpiTheme.uiFont(size: 13))
                 .foregroundStyle(inkSoft)
                 .padding(.top, 2)
             Text(inline(text))
-                .font(HanjiTheme.bodyFont())
+                .font(GalpiTheme.bodyFont())
                 .lineSpacing(bodyLineSpacing)
                 .textSelection(.enabled)
         }
@@ -139,7 +139,7 @@ struct MarkdownBody: View {
                 .fill(jjok.opacity(0.45))
                 .frame(width: 2)
             Text(inline(text))
-                .font(HanjiTheme.bodyFont())
+                .font(GalpiTheme.bodyFont())
                 .lineSpacing(bodyLineSpacing)
                 .foregroundStyle(inkSoft)
                 .textSelection(.enabled)
@@ -157,7 +157,7 @@ struct MarkdownBody: View {
             Color.clear.frame(height: 6)
         } else {
             Text(inline(text))
-                .font(HanjiTheme.bodyFont())
+                .font(GalpiTheme.bodyFont())
                 .lineSpacing(bodyLineSpacing)
                 .textSelection(.enabled)
         }

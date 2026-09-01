@@ -7,7 +7,7 @@ final class GRDBNoteRepositoryTests: XCTestCase {
 
     override func setUp() {
         tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("hanji-test-\(UUID().uuidString)")
+            .appendingPathComponent("galpi-test-\(UUID().uuidString)")
             .appendingPathComponent("test.sqlite")
     }
     override func tearDown() {

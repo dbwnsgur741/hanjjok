@@ -26,7 +26,7 @@ struct FolderChipBar: View {
                     model.folderFilter = .unfiled
                 }
             }
-            .padding(.horizontal, HanjiTheme.panelHorizontalMargin)
+            .padding(.horizontal, GalpiTheme.panelHorizontalMargin)
             .padding(.vertical, 6)
         }
     }
@@ -44,14 +44,14 @@ private struct FolderChip: View {
     @State private var isHovering = false
 
     private var isDark: Bool { scheme == .dark }
-    private var inkSoft: Color { isDark ? HanjiTheme.inkSoftDark : HanjiTheme.inkSoftLight }
-    private var jjok: Color { isDark ? HanjiTheme.jjokDark : HanjiTheme.jjokLight }
-    private var jjokWash: Color { isDark ? HanjiTheme.jjokWashDark : HanjiTheme.jjokWashLight }
+    private var inkSoft: Color { isDark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
+    private var jjok: Color { isDark ? GalpiTheme.jjokDark : GalpiTheme.jjokLight }
+    private var jjokWash: Color { isDark ? GalpiTheme.jjokWashDark : GalpiTheme.jjokWashLight }
 
     var body: some View {
         Button(action: action) {
             Text(name)
-                .font(HanjiTheme.uiFont(size: 12, weight: isSelected ? .semibold : .regular))
+                .font(GalpiTheme.uiFont(size: 12, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? jjok : inkSoft)
                 .lineLimit(1)
                 .padding(.horizontal, 8)

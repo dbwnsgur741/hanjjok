@@ -17,11 +17,11 @@ struct DrawerView: View {
     @State private var renameText = ""
 
     private var isDark: Bool { scheme == .dark }
-    private var card: Color { isDark ? HanjiTheme.cardDark : HanjiTheme.cardLight }
-    private var ink: Color { isDark ? HanjiTheme.inkDark : HanjiTheme.inkLight }
-    private var inkSoft: Color { isDark ? HanjiTheme.inkSoftDark : HanjiTheme.inkSoftLight }
+    private var card: Color { isDark ? GalpiTheme.cardDark : GalpiTheme.cardLight }
+    private var ink: Color { isDark ? GalpiTheme.inkDark : GalpiTheme.inkLight }
+    private var inkSoft: Color { isDark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
 
-    /// 이름 입력용 UI 폰트 — Pretendard 13pt, 로드 실패 시 시스템 폰트로 대체(HanjiTheme 관례).
+    /// 이름 입력용 UI 폰트 — Pretendard 13pt, 로드 실패 시 시스템 폰트로 대체(GalpiTheme 관례).
     private var uiNSFont: NSFont {
         NSFont(name: FontName.pretendardRegular, size: 13) ?? .systemFont(ofSize: 13)
     }
@@ -128,7 +128,7 @@ struct DrawerView: View {
                     Image(systemName: "plus").frame(width: 16)
                     Text("새 폴더")
                 }
-                .font(HanjiTheme.uiFont(size: 13))
+                .font(GalpiTheme.uiFont(size: 13))
                 .foregroundStyle(inkSoft)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
@@ -146,7 +146,7 @@ struct DrawerView: View {
             sectionLabel("태그")
             if model.tagCounts.isEmpty {
                 Text("태그 없음")
-                    .font(HanjiTheme.uiFont(size: 12))
+                    .font(GalpiTheme.uiFont(size: 12))
                     .foregroundStyle(inkSoft)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -166,7 +166,7 @@ struct DrawerView: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(HanjiTheme.uiFont(size: 11, weight: .semibold))
+            .font(GalpiTheme.uiFont(size: 11, weight: .semibold))
             .foregroundStyle(inkSoft)
             .padding(.horizontal, 14)
             .padding(.top, 6)
@@ -195,7 +195,7 @@ struct DrawerView: View {
         alert.addButton(withTitle: "삭제")
         alert.addButton(withTitle: "취소")
         // LSUIElement 앱은 활성화하지 않으면 알림창이 키 윈도우가 되지 않을 수 있다
-        // (HanjiApp.showExportError와 동일 이유).
+        // (GalpiApp.showExportError와 동일 이유).
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn {
             Task { await model.deleteFolder(folder) }
@@ -215,9 +215,9 @@ private struct DrawerRow: View {
     @State private var isHovering = false
 
     private var isDark: Bool { scheme == .dark }
-    private var inkSoft: Color { isDark ? HanjiTheme.inkSoftDark : HanjiTheme.inkSoftLight }
-    private var jjok: Color { isDark ? HanjiTheme.jjokDark : HanjiTheme.jjokLight }
-    private var jjokWash: Color { isDark ? HanjiTheme.jjokWashDark : HanjiTheme.jjokWashLight }
+    private var inkSoft: Color { isDark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
+    private var jjok: Color { isDark ? GalpiTheme.jjokDark : GalpiTheme.jjokLight }
+    private var jjokWash: Color { isDark ? GalpiTheme.jjokWashDark : GalpiTheme.jjokWashLight }
 
     var body: some View {
         Button(action: action) {
@@ -226,11 +226,11 @@ private struct DrawerRow: View {
                     .foregroundStyle(isSelected ? jjok : inkSoft)
                     .frame(width: 16)
                 Text(name)
-                    .font(HanjiTheme.uiFont(size: 13, weight: isSelected ? .semibold : .regular))
+                    .font(GalpiTheme.uiFont(size: 13, weight: isSelected ? .semibold : .regular))
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 Text("\(count)")
-                    .font(HanjiTheme.uiFont(size: 11).monospacedDigit())
+                    .font(GalpiTheme.uiFont(size: 11).monospacedDigit())
                     .foregroundStyle(inkSoft)
             }
             .padding(.horizontal, 14)

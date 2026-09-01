@@ -6,7 +6,7 @@ import Domain
 @Observable @MainActor
 final class TimelineModel {
     private let repo: any NoteRepository
-    private let log = Logger(subsystem: "kr.hurdlers.Hanji", category: "timeline")
+    private let log = Logger(subsystem: "kr.hurdlers.Galpi", category: "timeline")
     private var undoStack: [Note] = []
 
     var notes: [Note] = []       // 표시용 — createdAt 오름차순 (아래가 최신)
@@ -99,7 +99,7 @@ final class TimelineModel {
         let note = Note(id: UUID(), content: text, createdAt: Date(), updatedAt: nil)
         do {
             try await repo.save(note)
-            HanjiTheme.motion { notes.append(note) }
+            GalpiTheme.motion { notes.append(note) }
             draft = ""
             return true
         } catch {
@@ -111,7 +111,7 @@ final class TimelineModel {
     func delete(_ note: Note) async {
         do {
             try await repo.delete(id: note.id)
-            HanjiTheme.motion { notes.removeAll { $0.id == note.id } }
+            GalpiTheme.motion { notes.removeAll { $0.id == note.id } }
             undoStack.append(note)
         } catch {
             log.error("삭제 실패: \(error)")
@@ -162,11 +162,11 @@ final class TimelineModel {
         let stillMatches = matchesFolderFilter(updated.folderId)
         if let i = notes.firstIndex(where: { $0.id == updated.id }) {
             if stillMatches { notes[i] = updated }
-            else { HanjiTheme.motion { notes.remove(at: i) } }
+            else { GalpiTheme.motion { notes.remove(at: i) } }
         }
         if let i = searchResults.firstIndex(where: { $0.id == updated.id }) {
             if stillMatches { searchResults[i] = updated }
-            else { HanjiTheme.motion { searchResults.remove(at: i) } }
+            else { GalpiTheme.motion { searchResults.remove(at: i) } }
         }
     }
 
@@ -265,15 +265,15 @@ final class TimelineModel {
         }
     }
 
-    /// 서랍 토글 — HanjiTheme.motion으로 ≤200ms 슬라이드 애니메이션(동작 줄이기 존중)을 적용한다.
+    /// 서랍 토글 — GalpiTheme.motion으로 ≤200ms 슬라이드 애니메이션(동작 줄이기 존중)을 적용한다.
     func toggleDrawer() {
-        HanjiTheme.motion { isDrawerOpen.toggle() }
+        GalpiTheme.motion { isDrawerOpen.toggle() }
     }
 
     /// 스크림 탭·행 선택·Esc 등 "닫기"만 하는 경로에서 공용으로 쓰는 헬퍼.
     func closeDrawer() {
         guard isDrawerOpen else { return }
-        HanjiTheme.motion { isDrawerOpen = false }
+        GalpiTheme.motion { isDrawerOpen = false }
     }
 
     private func applyFolderFilterChange() async {

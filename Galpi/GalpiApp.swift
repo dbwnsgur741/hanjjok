@@ -10,7 +10,7 @@ extension KeyboardShortcuts.Name {
 }
 
 @main
-struct HanjiApp: App {
+struct GalpiApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
@@ -36,9 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Hanji")
+            .appendingPathComponent("Galpi")
         do {
-            repo = try GRDBNoteRepository(databaseURL: appSupport.appendingPathComponent("hanji.sqlite"))
+            repo = try GRDBNoteRepository(databaseURL: appSupport.appendingPathComponent("galpi.sqlite"))
             try BackupScheduler.runIfNeeded(
                 repository: repo, backupsDir: appSupport.appendingPathComponent("Backups"))
         } catch {
@@ -59,7 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
             let image = NSImage(systemSymbolName: "paintbrush.pointed",
-                                 accessibilityDescription: "한지")
+                                 accessibilityDescription: "갈피")
             image?.isTemplate = true
             button.image = image
             button.action = #selector(statusItemClicked)
@@ -126,7 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "설정…", action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(withTitle: "전체 내보내기…", action: #selector(exportAll), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "한지 종료",
+        menu.addItem(withTitle: "갈피 종료",
                      action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         for item in menu.items { item.target = self }
         menu.items.last?.target = NSApp
@@ -138,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor @objc func openSettings() {
         if settingsWindow == nil {
             let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView()))
-            window.title = "한지 설정"
+            window.title = "갈피 설정"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             settingsWindow = window
@@ -154,7 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let notes = try await self.repo.exportAll()
                 let markdown = MarkdownExporter.export(notes)
                 let panel = NSSavePanel()
-                panel.nameFieldStringValue = "hanji-export.md"
+                panel.nameFieldStringValue = "galpi-export.md"
                 // LSUIElement 앱은 Dock 아이콘이 없어 활성화하지 않으면 저장 패널이 키 윈도우가
                 // 되지 않을 수 있다 — 반드시 runModal() 전에 활성화한다.
                 NSApp.activate(ignoringOtherApps: true)

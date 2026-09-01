@@ -7,7 +7,7 @@ final class SearchTests: XCTestCase {
 
     override func setUp() {
         tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("hanji-search-\(UUID().uuidString)")
+            .appendingPathComponent("galpi-search-\(UUID().uuidString)")
             .appendingPathComponent("test.sqlite")
     }
     override func tearDown() {

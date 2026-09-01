@@ -337,7 +337,7 @@ private enum ComposerSyntaxHighlighter {
     private static let strikeRegex = try! NSRegularExpression(pattern: #"~~([^\n]+?)~~"#)
 
     static func apply(to textStorage: NSTextStorage, baseFont: NSFont, isDark: Bool) {
-        let ink = NSColor(isDark ? HanjiTheme.inkDark : HanjiTheme.inkLight)
+        let ink = NSColor(isDark ? GalpiTheme.inkDark : GalpiTheme.inkLight)
         let full = NSRange(location: 0, length: textStorage.length)
         // 전체를 기본값으로 되돌린 뒤 필요한 구간에만 addAttribute — beginEditing/endEditing
         // 으로 감싸지 않는다(didProcessEditing 안에서는 금지, QA r5-C 브리프).

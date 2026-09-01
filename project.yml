@@ -1,4 +1,4 @@
-name: Hanji
+name: Galpi
 options:
   bundleIdPrefix: kr.hurdlers
   deploymentTarget:
@@ -14,21 +14,21 @@ packages:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: 2.0.0
 targets:
-  Hanji:
+  Galpi:
     type: application
     platform: macOS
     sources:
-      - path: Hanji
+      - path: Galpi
     dependencies:
       - package: Domain
       - package: Data
       - package: PanelKit
       - package: KeyboardShortcuts
     info:
-      path: Hanji/Info.plist
+      path: Galpi/Info.plist
       properties:
         LSUIElement: true
-        CFBundleDisplayName: 한지
+        CFBundleDisplayName: 갈피
         NSHumanReadableCopyright: ""
         ATSApplicationFontsPath: .
     settings:
