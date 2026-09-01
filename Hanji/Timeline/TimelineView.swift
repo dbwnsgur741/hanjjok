@@ -57,6 +57,12 @@ struct TimelineView: View {
                 onTray: { model.toggleDrawer() },
                 onSettings: { (NSApp.delegate as? AppDelegate)?.openSettings() })
             Divider()
+            // [Task 23] 1차 폴더 전환 바 — 폴더가 하나도 없으면 통째로 숨겨 타임라인 정체성을
+            // 그대로 유지한다. 드로어보다 위(이 바 아래에서 드로어가 오버레이됨)에 둔다.
+            if !model.folders.isEmpty {
+                FolderChipBar(model: model)
+                Divider()
+            }
             // 헤더 아래 전체(검색바·타임라인·컴포저) 위에 드로어를 오버레이로 얹는다.
             // 그레인 오버레이(body의 바깥 ZStack)는 이 ZStack보다 한 겹 더 위에 있으므로
             // "패널 최상단 유지" 원칙대로 드로어 위에도 그대로 덮인다.
