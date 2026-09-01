@@ -14,8 +14,9 @@ struct TimelineView: View {
     let onOpenSettings: () -> Void
     @Environment(\.colorScheme) private var scheme
     @FocusState private var searchFieldFocused: Bool
-    // [Task 24] 컴포저 체크리스트 버튼이 NSTextView에 직접 마커를 삽입할 때 쓰는 브릿지.
-    // 메인 컴포저에만 연결한다(카드 인라인 수정·드로어 이름 필드는 미연결).
+    // [Task 24] 컴포저가 NSTextView를 직접 조작할 때 쓰는 브릿지. 메인 컴포저에만
+    // 연결한다(카드 인라인 수정·드로어 이름 필드는 미연결). [QA r5-C] 서식 툴바
+    // (composerToolbar)의 모든 버튼이 이걸 거쳐 텍스트뷰에 반영한다.
     @State private var composerCommands = ComposerCommands()
     // [QA r3 ②] 컴포저가 고정 높이(44~120)라 내용만큼 자라지 않는다는 지적 — 이제
     // ComposerTextView.onHeightChange가 보고하는 값으로 매 프레임 갱신한다.
@@ -142,50 +143,83 @@ struct TimelineView: View {
 
     /// [Task 24] 컴포저 필드 구분 — 이전에는 배경이 패널 바탕과 같아 "메모 작성 중"이라는
     /// 사실이 시각적으로 드러나지 않았다(QA 지적). card 톤 배경 + inkSoft 25% 테두리로
-    /// 감싸고, 비어 있을 때 플레이스홀더를 얹는다. 왼쪽 체크리스트 버튼은 현재 줄 시작에
-    /// "[] " 마커를 삽입한다(ChecklistParser가 기대하는 정확한 문자열).
+    /// 감싸고, 비어 있을 때 플레이스홀더를 얹는다.
     /// [QA r2] 우측에 보내기 버튼을 추가한다 — "보내기 버튼이 없다"는 사용자 피드백에 대응.
+    /// [QA r5-C] 왼쪽 체크리스트 버튼은 서식 툴바(composerToolbar)로 옮겼다 — "채팅창 말고
+    /// 에디터 느낌으로" 사용자 피드백 대응. 컴포저 카드는 그대로 두고 그 위에 툴바 한
+    /// 행을 얹는 VStack으로 감쌌다.
     private var composerArea: some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            ComposerIconButton(systemName: "checklist", inkSoft: inkSoft, ink: ink) {
-                composerCommands.insertChecklistMarker()
-            }
-            ZStack(alignment: .topLeading) {
-                if model.draft.isEmpty {
-                    // ComposerTextView의 textContainerInset(멀티라인: width 12 · height 10)과
-                    // 정렬을 맞춰 타이핑된 첫 글자 자리와 겹치도록 한다. leading은 12(인셋)+
-                    // 5(NSTextContainer 기본 lineFragmentPadding, ComposerTextView가 건드리지
-                    // 않는 값)만큼 보정한 17 — 그렇지 않으면 플레이스홀더가 실제 타이핑 위치보다
-                    // 5pt 왼쪽에 떠 보인다 (리뷰 지적, Fix round 1).
-                    Text("새 메모…")
-                        .font(HanjiTheme.bodyFont())
-                        .foregroundStyle(inkSoft)
-                        .padding(.leading, 17)
-                        .padding(.top, 10)
-                        .allowsHitTesting(false)
+        VStack(alignment: .leading, spacing: 8) {
+            composerToolbar
+            HStack(alignment: .bottom, spacing: 6) {
+                ZStack(alignment: .topLeading) {
+                    if model.draft.isEmpty {
+                        // ComposerTextView의 textContainerInset(멀티라인: width 12 · height 10)과
+                        // 정렬을 맞춰 타이핑된 첫 글자 자리와 겹치도록 한다. leading은 12(인셋)+
+                        // 5(NSTextContainer 기본 lineFragmentPadding, ComposerTextView가 건드리지
+                        // 않는 값)만큼 보정한 17 — 그렇지 않으면 플레이스홀더가 실제 타이핑 위치보다
+                        // 5pt 왼쪽에 떠 보인다 (리뷰 지적, Fix round 1).
+                        Text("새 메모…")
+                            .font(HanjiTheme.bodyFont())
+                            .foregroundStyle(inkSoft)
+                            .padding(.leading, 17)
+                            .padding(.top, 10)
+                            .allowsHitTesting(false)
+                    }
+                    ComposerTextView(
+                        text: $model.draft,
+                        font: HanjiTheme.bodyNSFont(),
+                        onSubmit: sendFromComposer,
+                        commands: composerCommands,
+                        // [QA r3 ②] 160 초과분은 NSScrollView가 스크롤한다(hasVerticalScroller는
+                        // false 그대로 — 스크롤 자체는 동작).
+                        onHeightChange: { composerHeight = min(max($0, 44), 160) })
                 }
-                ComposerTextView(
-                    text: $model.draft,
-                    font: HanjiTheme.bodyNSFont(),
-                    onSubmit: sendFromComposer,
-                    commands: composerCommands,
-                    // [QA r3 ②] 160 초과분은 NSScrollView가 스크롤한다(hasVerticalScroller는
-                    // false 그대로 — 스크롤 자체는 동작).
-                    onHeightChange: { composerHeight = min(max($0, 44), 160) })
+                .frame(height: composerHeight)
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 6).fill(card))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(inkSoft.opacity(0.25), lineWidth: 1))
+                ComposerSendButton(
+                    inkSoft: inkSoft,
+                    jjok: jjok,
+                    isEnabled: !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    action: sendFromComposer)
             }
-            .frame(height: composerHeight)
-            .padding(8)
-            .background(RoundedRectangle(cornerRadius: 6).fill(card))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(inkSoft.opacity(0.25), lineWidth: 1))
-            ComposerSendButton(
-                inkSoft: inkSoft,
-                jjok: jjok,
-                isEnabled: !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                action: sendFromComposer)
         }
         .padding(8)
+    }
+
+    /// [QA r5-C] 서식 툴바 — 굵게(⌘B)·제목·불릿·체크리스트·인용·구분선. 컴포저 카드
+    /// 바깥 위쪽 한 행(아이콘만, spacing 2, 좌측 정렬)에 놓아 "에디터 느낌의 채팅창"을
+    /// 만들어 달라는 사용자 피드백에 대응한다. 각 버튼은 ComposerCommands를 거쳐
+    /// NSTextView에 직접 반영되고(undo 등록·textDidChange 발화 보장), 액션이 끝나면
+    /// ComposerCommands.restoreFocus가 포커스를 텍스트뷰로 되돌린다(그러지 않으면 버튼
+    /// 클릭 후 다음 타이핑이 씹힌다).
+    private var composerToolbar: some View {
+        HStack(spacing: 2) {
+            ComposerIconButton(systemName: "bold", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
+                composerCommands.wrapSelection(with: "**")
+            }
+            .keyboardShortcut("b", modifiers: .command)
+            ComposerIconButton(systemName: "textformat.size", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
+                composerCommands.togglePrefix("## ")
+            }
+            ComposerIconButton(systemName: "list.bullet", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
+                composerCommands.togglePrefix("- ")
+            }
+            ComposerIconButton(systemName: "checklist", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
+                composerCommands.togglePrefix("- [ ] ")
+            }
+            ComposerIconButton(systemName: "text.quote", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
+                composerCommands.togglePrefix("> ")
+            }
+            ComposerIconButton(systemName: "minus", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
+                composerCommands.insertDivider()
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     /// [QA r4 ①] 컴포저의 단일 전송 경로 — Enter(ComposerTextView.onSubmit)와 보내기 버튼
@@ -279,12 +313,17 @@ struct DaySeparator: View {
     }
 }
 
-/// [Task 24] 컴포저 왼쪽 체크리스트 버튼 — HeaderView.HeaderIconButton과 같은 관례
-/// (SF Symbol template, 13pt, inkSoft 기본, 호버 시 ink로 전환, 22x22 히트 영역).
+/// [Task 24] 컴포저 아이콘 버튼 — HeaderView.HeaderIconButton과 같은 관례
+/// (SF Symbol template, inkSoft 기본, 호버 시 ink로 전환). 기본 13pt/22×22 히트 영역.
+/// [QA r5-C] 서식 툴바(composerToolbar)가 12pt/20×20으로 재사용한다.
 private struct ComposerIconButton: View {
     let systemName: String
     let inkSoft: Color
     let ink: Color
+    /// [QA r5-C] 서식 툴바는 패널 폭이 좁아 12pt/20×20을 쓴다(기존 22×22보다 작게).
+    /// 기존 호출부는 이 두 파라미터를 생략해 그대로 13pt/22×22를 유지한다(소스 호환).
+    var iconSize: CGFloat = 13
+    var frameSize: CGFloat = 22
     let action: () -> Void
 
     @State private var isHovering = false
@@ -292,9 +331,9 @@ private struct ComposerIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 13, weight: .regular))
+                .font(.system(size: iconSize, weight: .regular))
                 .foregroundStyle(isHovering ? ink : inkSoft)
-                .frame(width: 22, height: 22)
+                .frame(width: frameSize, height: frameSize)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -43,6 +43,16 @@ struct ComposerTextView: NSViewRepresentable {
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = false
         commands?.textView = textView
+        // [QA r5-C 실제 원인] macOS 자동 치환이 --- 를 — 로, " 를 " 로 조용히 바꿔 사용자가
+        // 친 마크다운을 깨뜨린다(컨트롤러 진단) — singleLine(이름 필드)에 걸어도 무해하므로
+        // 조건 없이 전부 끈다.
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        // [QA r5-C] 라이브 문법 강조 — Coordinator가 NSTextStorageDelegate를 겸한다.
+        textView.textStorage?.delegate = context.coordinator
+        context.coordinator.textView = textView
         return scroll
     }
 
@@ -62,11 +72,14 @@ struct ComposerTextView: NSViewRepresentable {
         context.coordinator.reportHeight(from: textView)
     }
 
-    final class Coordinator: NSObject, NSTextViewDelegate {
+    final class Coordinator: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var parent: ComposerTextView
         /// [QA r3 ②] 직전에 보고한 높이 — 0.5pt 미만 변화는 다시 보고하지 않아 SwiftUI 쪽
         /// height binding ↔ NSTextView 레이아웃 사이의 무한 갱신 루프를 막는다.
         private var lastReportedHeight: CGFloat?
+        /// [QA r5-C] 라이브 강조가 hasMarkedText()·effectiveAppearance(다크모드 판정)를
+        /// 읽을 때 쓰는 약한 참조 — makeNSView가 채운다.
+        weak var textView: NSTextView?
         init(_ parent: ComposerTextView) { self.parent = parent }
 
         func textDidChange(_ notification: Notification) {
@@ -78,6 +91,22 @@ struct ComposerTextView: NSViewRepresentable {
         /// [QA r3 ③] 포커스 아웃 — 인라인 수정 필드가 이걸 통해 커밋을 트리거한다.
         func textDidEndEditing(_ notification: Notification) {
             parent.onFocusLost?()
+        }
+
+        /// [QA r5-C] 라이브 마크다운 강조. 이 태스크 최대 위험은 한글 조합(IME) 도중
+        /// 속성을 얹어 조합을 깨뜨리는 것이므로, hasMarkedText() 가드를 최우선으로 둔다.
+        /// `.editedCharacters` 마스크만 통과시키는 것도 안전장치다 — 이 함수 안에서 하는
+        /// attribute 전용 변경(addAttribute 등)이 스스로를 다시 부르더라도 그 재진입
+        /// 호출의 마스크에는 `.editedCharacters`가 없으므로 여기서 즉시 빠져나가
+        /// 무한 재귀가 생기지 않는다.
+        func textStorage(_ textStorage: NSTextStorage,
+                          didProcessEditing editedMask: NSTextStorageEditActions,
+                          range editedRange: NSRange,
+                          changeInLength delta: Int) {
+            guard editedMask.contains(.editedCharacters) else { return }
+            guard let tv = textView, !tv.hasMarkedText() else { return }
+            let isDark = tv.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ComposerSyntaxHighlighter.apply(to: textStorage, baseFont: parent.font, isDark: isDark)
         }
 
         /// [QA r3 ②] 내용 높이를 계산해 직전 보고값과 0.5pt 이상 차이날 때만 콜백한다.
@@ -100,10 +129,15 @@ struct ComposerTextView: NSViewRepresentable {
         /// [QA r4] MD 에디터식 Enter 의미론(스펙 §8 ⑦ 확정) — r2의 "Shift+Enter 연속" 규칙을
         /// 대체한다. singleLine(드로어 이름 필드)은 예전처럼 Enter가 곧 제출이다. 다중행
         /// 모드는 Shift+Enter가 항상 일반 줄바꿈(ⓓ, 항목 뒤에 평문을 넣는 통로)이고, 캐럿이
-        /// 있는 줄이 체크리스트 항목이면 Enter가 본문 유무로 갈린다: 본문 있으면 다음 줄에
-        /// 새 마커를 이어 붙여 연속 입력(ⓐ, 제출 아님), 본문 없으면(리스트를 끝내려는 신호)
-        /// 그 빈 마커 줄을 지우고 제출한다(ⓑ). 체크리스트 줄이 아니면 예전처럼 Enter = 제출
-        /// (ⓒ, 카톡식 유지).
+        /// 있는 줄이 체크리스트·불릿·인용 항목이면 Enter가 본문 유무로 갈린다: 본문 있으면
+        /// 다음 줄에 새 마커를 이어 붙여 연속 입력(ⓐ, 제출 아님), 본문 없으면(항목을
+        /// 끝내려는 신호) 그 빈 마커 줄을 지우고 제출한다(ⓑ). 세 종류 다 아니면 예전처럼
+        /// Enter = 제출(ⓒ, 카톡식 유지).
+        /// [QA r5-C] 판정은 `Domain.MarkdownParser.blocks(in:)`의 첫 블록으로 한다(정규식
+        /// 중복 금지) — 체크리스트뿐이던 연속을 불릿·인용까지 확장하면서도 새 정규식을
+        /// 만들지 않는다. 단 MarkdownParser.bulletRegex는 본문 없는 "- "/"* "를 의도적으로
+        /// 문단으로 분류한다(그 종료 판정은 이 태스크가 대신 내리라는 주석이 MarkdownParser.swift에
+        /// 있음) — 그 경우만 별도로 확인한다.
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             if selector == #selector(NSResponder.insertNewline(_:)) {
                 if parent.singleLine { parent.onSubmit(); return true }
@@ -113,23 +147,43 @@ struct ComposerTextView: NSViewRepresentable {
                 let caretRange = textView.selectedRange()
                 let lineRange = ns.lineRange(for: caretRange)
                 let currentLine = ns.substring(with: lineRange).trimmingCharacters(in: .newlines)
-                if let item = ChecklistParser.items(in: currentLine).first {
-                    if item.text.isEmpty {
-                        // ⓑ 빈 항목에서 Enter = 마커 줄 삭제 후 제출(리스트 끝내고 전송).
-                        // insertText가 textDidChange를 동기 발화해 draft가 갱신된 뒤 —
-                        // 그 순서 그대로 — onSubmit이 실행돼야 한다(순서 뒤집으면 옛 마커
-                        // 줄이 저장됨).
-                        textView.insertText("", replacementRange: lineRange)
-                        parent.onSubmit()
-                        return true
-                    }
-                    // ⓐ 본문 있는 항목에서 Enter = 다음 항목 자동 연속(전송 아님).
-                    textView.insertText("\n[] ", replacementRange: caretRange)
+
+                // ⓑ 빈 항목에서 Enter = 마커 줄 삭제 후 제출(리스트 끝내고 전송). insertText가
+                // textDidChange를 동기 발화해 draft가 갱신된 뒤 — 그 순서 그대로 — onSubmit이
+                // 실행돼야 한다(순서 뒤집으면 옛 마커 줄이 저장됨).
+                func endItem() -> Bool {
+                    textView.insertText("", replacementRange: lineRange)
+                    parent.onSubmit()
                     return true
                 }
-                // ⓒ 일반 줄에서 Enter = 제출(카톡식 유지).
-                parent.onSubmit()
-                return true
+
+                guard let block = MarkdownParser.blocks(in: currentLine).first else {
+                    parent.onSubmit()
+                    return true
+                }
+                switch block {
+                case .checklist(let item):
+                    if item.text.isEmpty { return endItem() }
+                    // ⓐ 본문 있는 항목에서 Enter = 다음 항목 자동 연속(전송 아님).
+                    textView.insertText("\n- [ ] ", replacementRange: caretRange)
+                    return true
+                case .bullet:
+                    // 불릿은 본문이 비면 MarkdownParser가 애초에 .bullet으로 분류하지 않으므로
+                    // (아래 default에서 처리) 여기서는 항상 계속 입력 케이스만 온다.
+                    textView.insertText("\n- ", replacementRange: caretRange)
+                    return true
+                case .quote(let text, _):
+                    if text.isEmpty { return endItem() }
+                    textView.insertText("\n> ", replacementRange: caretRange)
+                    return true
+                default:
+                    // MarkdownParser.bulletRegex는 본문 없는 "- "/"* "를 의도적으로 문단으로
+                    // 분류한다 — 그 종료 신호만 여기서 직접 잡는다.
+                    if currentLine == "- " || currentLine == "* " { return endItem() }
+                    // ⓒ 일반 줄에서 Enter = 제출(카톡식 유지).
+                    parent.onSubmit()
+                    return true
+                }
             }
             return false
         }
@@ -143,14 +197,80 @@ struct ComposerTextView: NSViewRepresentable {
 final class ComposerCommands {
     weak var textView: NSTextView?
 
-    /// 캐럿이 있는 줄의 시작 위치에 체크리스트 마커 `"[] "`를 삽입한다.
-    /// ChecklistParser의 lineRegex가 요구하는 정확한 문자열(대괄호 쌍 + 공백 1개)이어야
-    /// 새 항목으로 인식된다.
+    /// 캐럿이 있는 줄의 시작 위치에 체크리스트 마커를 삽입한다. [QA r5-C] 표준 마크다운
+    /// 문법인 `"- [ ] "`로 통일했다(예전 `"[] "`는 ChecklistParser는 인식해도 일반
+    /// 마크다운 뷰어와 호환되지 않았다) — ChecklistParser.lineRegex가 `- ` 접두를
+    /// 선택적으로 허용하므로 여전히 새 항목으로 인식된다.
     func insertChecklistMarker() {
         guard let textView else { return }
         let ns = textView.string as NSString
         let lineStart = ns.lineRange(for: textView.selectedRange()).location
-        textView.insertText("[] ", replacementRange: NSRange(location: lineStart, length: 0))
+        textView.insertText("- [ ] ", replacementRange: NSRange(location: lineStart, length: 0))
+        restoreFocus()
+    }
+
+    /// [QA r5-C] 현재 줄 접두 토글 — 이미 같은 접두면 벗기고, 다른 리스트류 접두가 있으면
+    /// 그것부터 벗긴 뒤 요청 접두로 바꾼다. prefix 예: `"# "`, `"## "`, `"- "`, `"> "`,
+    /// `"- [ ] "`. 판정 순서는 긴 것부터 — `"- [ ] "`가 `"- "`보다 먼저 매치돼야 체크리스트
+    /// 줄에서 `"- "`만 벗기고 `"[ ] "`를 남기는 사고가 나지 않는다.
+    func togglePrefix(_ prefix: String) {
+        guard let textView else { return }
+        let ns = textView.string as NSString
+        let lineRange = ns.lineRange(for: textView.selectedRange())
+        var body = ns.substring(with: lineRange)
+        let knownPrefixes = ["- [ ] ", "### ", "## ", "# ", "- ", "> "]
+        var existing: String?
+        for candidate in knownPrefixes where body.hasPrefix(candidate) {
+            existing = candidate
+            body.removeFirst(candidate.count)
+            break
+        }
+        let newLine = existing == prefix ? body : prefix + body
+        textView.insertText(newLine, replacementRange: lineRange)
+        restoreFocus()
+    }
+
+    /// [QA r5-C] 선택 영역을 marker로 감싼다(`"**"`·`"*"`·`` "`" ``·`"~~"`). 선택이 없으면
+    /// 마커 쌍만 삽입하고 캐럿을 그 사이로 옮긴다. 선택 양옆이 이미 정확히 그 marker면
+    /// 벗긴다(토글).
+    func wrapSelection(with marker: String) {
+        guard let textView else { return }
+        let ns = textView.string as NSString
+        let selRange = textView.selectedRange()
+        let markerLen = (marker as NSString).length
+
+        let hasLeadingMarker = selRange.location >= markerLen
+            && ns.substring(with: NSRange(location: selRange.location - markerLen, length: markerLen)) == marker
+        let hasTrailingMarker = selRange.location + selRange.length + markerLen <= ns.length
+            && ns.substring(with: NSRange(location: selRange.location + selRange.length, length: markerLen)) == marker
+
+        if hasLeadingMarker && hasTrailingMarker {
+            let outerRange = NSRange(location: selRange.location - markerLen,
+                                      length: selRange.length + markerLen * 2)
+            let inner = ns.substring(with: selRange)
+            textView.insertText(inner, replacementRange: outerRange)
+            textView.setSelectedRange(NSRange(location: outerRange.location, length: (inner as NSString).length))
+        } else {
+            let selected = ns.substring(with: selRange)
+            textView.insertText(marker + selected + marker, replacementRange: selRange)
+            textView.setSelectedRange(NSRange(location: selRange.location + markerLen,
+                                               length: (selected as NSString).length))
+        }
+        restoreFocus()
+    }
+
+    /// [QA r5-C] 캐럿 줄 아래에 구분선(`"---"`) 줄을 넣는다 — 현재 줄이 개행으로 끝나지
+    /// 않으면(문서 마지막 줄) 개행을 먼저 붙여 구분선이 그 줄과 합쳐지지 않게 하고, 구분선
+    /// 뒤에도 개행을 붙여 다음 입력이 구분선과 한 줄로 이어지지 않게 한다.
+    func insertDivider() {
+        guard let textView else { return }
+        let ns = textView.string as NSString
+        let lineRange = ns.lineRange(for: textView.selectedRange())
+        let lineEnd = lineRange.location + lineRange.length
+        let currentLine = ns.substring(with: lineRange)
+        let insertion = currentLine.hasSuffix("\n") ? "---\n" : "\n---\n"
+        textView.insertText(insertion, replacementRange: NSRange(location: lineEnd, length: 0))
+        restoreFocus()
     }
 
     /// 조합 중(marked) 텍스트를 확정하고 확정된 전체 문자열을 돌려준다.
@@ -168,5 +288,139 @@ final class ComposerCommands {
         guard let textView else { return }
         if textView.hasMarkedText() { textView.unmarkText() }
         textView.string = ""
+    }
+
+    /// [QA r5-C] 툴바 버튼 클릭은 NSButton이 first responder가 되어 텍스트뷰가 포커스를
+    /// 잃는다 — 각 명령 끝에 포커스를 텍스트뷰로 되돌려 다음 입력이 바로 이어지게 한다.
+    private func restoreFocus() {
+        guard let textView else { return }
+        NSApp.keyWindow?.makeFirstResponder(textView)
+    }
+}
+
+/// [QA r5-C] 컴포저 라이브 문법 강조 — 저장되는 텍스트는 절대 건드리지 않고(마커 글자도
+/// 지우지 않음) 속성만 얹는다. 블록 판정(제목·구분선·체크리스트·불릿·인용)은
+/// `Domain.MarkdownParser.blocks(in:)`을 줄 단위로 재사용해 정규식을 중복시키지 않는다 —
+/// MarkdownParser는 인라인 서식을 다루지 않으므로(MarkdownBody.swift 주석 참조)
+/// `**굵게**` 등은 여기서 직접 찾는다. 호출부(Coordinator.textStorage(_:didProcessEditing:...))
+/// 가 hasMarkedText() 가드와 `.editedCharacters` 마스크 체크를 이미 마쳤다고 가정한다 —
+/// 이 타입 자체는 그 가드를 모른다(재사용 시 반드시 호출부에서 가드할 것).
+private enum ComposerSyntaxHighlighter {
+    private static let boldRegex = try! NSRegularExpression(pattern: #"\*\*([^\n]+?)\*\*"#)
+    private static let italicRegex = try! NSRegularExpression(pattern: #"(?<!\*)\*([^*\n]+)\*(?!\*)"#)
+    private static let codeRegex = try! NSRegularExpression(pattern: #"`([^`\n]+)`"#)
+    private static let strikeRegex = try! NSRegularExpression(pattern: #"~~([^\n]+?)~~"#)
+
+    static func apply(to textStorage: NSTextStorage, baseFont: NSFont, isDark: Bool) {
+        let ink = NSColor(isDark ? HanjiTheme.inkDark : HanjiTheme.inkLight)
+        let full = NSRange(location: 0, length: textStorage.length)
+        // 전체를 기본값으로 되돌린 뒤 필요한 구간에만 addAttribute — beginEditing/endEditing
+        // 으로 감싸지 않는다(didProcessEditing 안에서는 금지, QA r5-C 브리프).
+        textStorage.setAttributes([.font: baseFont, .foregroundColor: ink], range: full)
+        guard full.length > 0 else { return }
+
+        let markerColor = ink.withAlphaComponent(0.4)
+        let ns = textStorage.string as NSString
+        ns.enumerateSubstrings(in: full, options: .byLines) { substring, lineRange, _, _ in
+            guard let lineText = substring, !lineText.isEmpty else { return }
+            styleBlock(lineText: lineText, lineRange: lineRange, storage: textStorage,
+                       baseFont: baseFont, markerColor: markerColor)
+            styleInlineAll(lineText: lineText, lineOffset: lineRange.location, storage: textStorage,
+                            baseFont: baseFont, markerColor: markerColor)
+        }
+    }
+
+    // MARK: - 블록 규칙 (MarkdownParser 재사용)
+
+    private static func styleBlock(lineText: String, lineRange: NSRange, storage: NSTextStorage,
+                                    baseFont: NSFont, markerColor: NSColor) {
+        guard let block = MarkdownParser.blocks(in: lineText).first else { return }
+        switch block {
+        case .heading(let level, let text, _):
+            let size: CGFloat = level == 1 ? 20 : (level == 2 ? 17.5 : 15.5)
+            let bold = NSFontManager.shared.convert(baseFont, toHaveTrait: .boldFontMask)
+            let sizedBold = NSFont(descriptor: bold.fontDescriptor, size: size) ?? bold
+            let prefixLength = (lineText as NSString).length - (text as NSString).length
+            let bodyRange = NSRange(location: lineRange.location + prefixLength,
+                                     length: (text as NSString).length)
+            if bodyRange.length > 0 { storage.addAttribute(.font, value: sizedBold, range: bodyRange) }
+            markPrefix(length: prefixLength, lineRange: lineRange, storage: storage, markerColor: markerColor)
+        case .divider:
+            storage.addAttribute(.foregroundColor, value: markerColor, range: lineRange)
+        case .checklist(let item):
+            markPrefix(bodyText: item.text, lineText: lineText, lineRange: lineRange,
+                       storage: storage, markerColor: markerColor)
+        case .bullet(let text, _):
+            markPrefix(bodyText: text, lineText: lineText, lineRange: lineRange,
+                       storage: storage, markerColor: markerColor)
+        case .quote(let text, _):
+            markPrefix(bodyText: text, lineText: lineText, lineRange: lineRange,
+                       storage: storage, markerColor: markerColor)
+        case .paragraph:
+            break
+        }
+    }
+
+    /// 줄 접두(마커) 부분만 40% 알파로 — `text`가 항상 `lineText`의 접미(suffix)라는
+    /// ChecklistParser/MarkdownParser 정규식의 보장(`.*$`로 끝까지 캡처)을 이용해 길이
+    /// 차감만으로 접두 길이를 구한다(별도 정규식 불필요).
+    private static func markPrefix(bodyText: String, lineText: String, lineRange: NSRange,
+                                    storage: NSTextStorage, markerColor: NSColor) {
+        let prefixLength = (lineText as NSString).length - (bodyText as NSString).length
+        markPrefix(length: prefixLength, lineRange: lineRange, storage: storage, markerColor: markerColor)
+    }
+
+    private static func markPrefix(length: Int, lineRange: NSRange, storage: NSTextStorage, markerColor: NSColor) {
+        guard length > 0 else { return }
+        storage.addAttribute(.foregroundColor, value: markerColor,
+                              range: NSRange(location: lineRange.location, length: length))
+    }
+
+    // MARK: - 인라인 규칙 (여기서만 정규식을 새로 씀 — MarkdownParser는 인라인을 다루지 않음)
+
+    private static func styleInlineAll(lineText: String, lineOffset: Int, storage: NSTextStorage,
+                                        baseFont: NSFont, markerColor: NSColor) {
+        styleInline(boldRegex, lineText: lineText, lineOffset: lineOffset, storage: storage, markerColor: markerColor) { range in
+            applyTrait(.boldFontMask, range: range, storage: storage, baseFont: baseFont)
+        }
+        styleInline(italicRegex, lineText: lineText, lineOffset: lineOffset, storage: storage, markerColor: markerColor) { range in
+            applyTrait(.italicFontMask, range: range, storage: storage, baseFont: baseFont)
+        }
+        styleInline(codeRegex, lineText: lineText, lineOffset: lineOffset, storage: storage, markerColor: markerColor) { range in
+            let current = (storage.attribute(.font, at: range.location, effectiveRange: nil) as? NSFont) ?? baseFont
+            storage.addAttribute(.font,
+                                  value: NSFont.monospacedSystemFont(ofSize: current.pointSize, weight: .regular),
+                                  range: range)
+        }
+        styleInline(strikeRegex, lineText: lineText, lineOffset: lineOffset, storage: storage, markerColor: markerColor) { range in
+            storage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: range)
+        }
+    }
+
+    /// marker(regex 그룹 1 밖) 구간은 40% 알파로, 내용(그룹 1) 구간은 styleContent로 스타일한다.
+    private static func styleInline(_ regex: NSRegularExpression, lineText: String, lineOffset: Int,
+                                     storage: NSTextStorage, markerColor: NSColor,
+                                     styleContent: (NSRange) -> Void) {
+        let ns = lineText as NSString
+        let matches = regex.matches(in: lineText, range: NSRange(location: 0, length: ns.length))
+        for match in matches {
+            guard match.numberOfRanges > 1 else { continue }
+            let full = match.range(at: 0)
+            let inner = match.range(at: 1)
+            guard full.location != NSNotFound, inner.location != NSNotFound else { continue }
+            let leadingMarker = NSRange(location: lineOffset + full.location, length: inner.location - full.location)
+            let trailingStart = inner.location + inner.length
+            let trailingMarker = NSRange(location: lineOffset + trailingStart,
+                                          length: full.location + full.length - trailingStart)
+            if leadingMarker.length > 0 { storage.addAttribute(.foregroundColor, value: markerColor, range: leadingMarker) }
+            if trailingMarker.length > 0 { storage.addAttribute(.foregroundColor, value: markerColor, range: trailingMarker) }
+            let contentRange = NSRange(location: lineOffset + inner.location, length: inner.length)
+            styleContent(contentRange)
+        }
+    }
+
+    private static func applyTrait(_ trait: NSFontTraitMask, range: NSRange, storage: NSTextStorage, baseFont: NSFont) {
+        let current = (storage.attribute(.font, at: range.location, effectiveRange: nil) as? NSFont) ?? baseFont
+        storage.addAttribute(.font, value: NSFontManager.shared.convert(current, toHaveTrait: trait), range: range)
     }
 }
