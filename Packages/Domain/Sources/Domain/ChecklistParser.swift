@@ -17,9 +17,10 @@ public struct ChecklistItem: Equatable, Sendable {
 }
 
 public enum ChecklistParser {
-    /// 줄 규칙: 선행 공백 허용, `- ` 접두 허용, `[]`·`[ ]`·`[x]`·`[X]` 마커,
-    /// 마커 뒤는 "공백 1개 + 본문" 또는 줄 끝(빈 항목). `[]abc`처럼 공백 없이 붙으면 항목 아님.
-    private static let lineRegex = #/^\s*(?:- )?\[(?<mark>[ xX]?)\](?: (?<text>.*))?$/#
+    /// 줄 규칙: 선행 공백 허용, `-`·`*` 접두 허용(뒤 공백 선택), `[]`·`[ ]`·`[x]`·`[X]` 마커,
+    /// 마커 뒤 공백도 선택(있어도 없어도 무방) + 본문. `[]abc`처럼 마커 뒤에 공백 없이 붙어도
+    /// 항목으로 인식한다(QA r2 근거: `[]할일`이 인식 안 되는 사용자 피드백으로 완화).
+    private static let lineRegex = #/^\s*(?:[-*] ?)?\[(?<mark>[ xX]?)\] ?(?<text>.*)$/#
 
     public static func items(in content: String) -> [ChecklistItem] {
         var result: [ChecklistItem] = []
@@ -40,7 +41,7 @@ public enum ChecklistParser {
     private static func parseLine(_ line: String) -> (isChecked: Bool, text: String)? {
         guard let match = line.wholeMatch(of: lineRegex) else { return nil }
         let mark = match.output.mark
-        return (mark == "x" || mark == "X", String(match.output.text ?? ""))
+        return (mark == "x" || mark == "X", String(match.output.text))
     }
 
     /// 괄호 안만 바꾼 새 content: `[]`·`[ ]`→`[x]`, `[x]`·`[X]`→`[ ]`.

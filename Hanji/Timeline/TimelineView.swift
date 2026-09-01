@@ -29,6 +29,8 @@ struct TimelineView: View {
     // [Task 24] 컴포저 필드 구분 배경/체크리스트 버튼 색.
     private var card: Color { scheme == .dark ? HanjiTheme.cardDark : HanjiTheme.cardLight }
     private var inkSoft: Color { scheme == .dark ? HanjiTheme.inkSoftDark : HanjiTheme.inkSoftLight }
+    // [QA r2] 보내기 버튼 활성 색.
+    private var jjok: Color { scheme == .dark ? HanjiTheme.jjokDark : HanjiTheme.jjokLight }
     private var grainTint: Color { scheme == .dark ? HanjiTheme.grainTintDark : HanjiTheme.grainTintLight }
     private var grainOpacity: Double { scheme == .dark ? HanjiTheme.grainOpacityDark : HanjiTheme.grainOpacityLight }
 
@@ -131,6 +133,7 @@ struct TimelineView: View {
     /// 사실이 시각적으로 드러나지 않았다(QA 지적). card 톤 배경 + inkSoft 25% 테두리로
     /// 감싸고, 비어 있을 때 플레이스홀더를 얹는다. 왼쪽 체크리스트 버튼은 현재 줄 시작에
     /// "[] " 마커를 삽입한다(ChecklistParser가 기대하는 정확한 문자열).
+    /// [QA r2] 우측에 보내기 버튼을 추가한다 — "보내기 버튼이 없다"는 사용자 피드백에 대응.
     private var composerArea: some View {
         HStack(alignment: .bottom, spacing: 6) {
             ComposerIconButton(systemName: "checklist", inkSoft: inkSoft, ink: ink) {
@@ -162,6 +165,13 @@ struct TimelineView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .strokeBorder(inkSoft.opacity(0.25), lineWidth: 1))
+            ComposerSendButton(
+                inkSoft: inkSoft,
+                jjok: jjok,
+                isEnabled: !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ) {
+                Task { await model.submit() }
+            }
         }
         .padding(8)
     }
@@ -263,5 +273,29 @@ private struct ComposerIconButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
+    }
+}
+
+/// [QA r2] 컴포저 우측 보내기 버튼 — `arrow.up.circle.fill` 19pt. ComposerIconButton과
+/// 같은 22x22 히트 영역 관례를 따르되, 색은 호버가 아니라 draft 유무로 결정한다(비어 있으면
+/// 눌러도 보낼 내용이 없다는 뜻이므로 inkSoft 35% 알파로 비활성 표시, 있으면 jjok로 강조).
+/// 액션은 항상 Enter 제출과 동일한 model.submit() 경로를 그대로 호출한다 — 새 제출 로직 없음.
+private struct ComposerSendButton: View {
+    let inkSoft: Color
+    let jjok: Color
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.up.circle.fill")
+                .font(.system(size: 19))
+                .foregroundStyle(isEnabled ? jjok : inkSoft.opacity(0.35))
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .accessibilityLabel("보내기")
     }
 }

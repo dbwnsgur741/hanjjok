@@ -229,16 +229,21 @@ struct NoteCardView: View {
         }
     }
 
-    /// 체크리스트 항목 한 줄 — 체크박스(11.5pt, unchecked=inkSoft·checked=jjok) + 본문.
-    /// 완료 항목은 취소선 + inkSoft로 흐리게, 미완료 항목은 일반 본문과 같은 색(환경 기본 ink).
+    /// 체크리스트 항목 한 줄 — 체크박스(13pt, unchecked=inkSoft `square`·checked=jjok
+    /// `checkmark.square.fill`) + 본문. 완료 항목은 취소선 + inkSoft로 흐리게, 미완료 항목은
+    /// 일반 본문과 같은 색(환경 기본 ink). QA r2: 11.5pt inkSoft 외곽선만으로는 체크박스인지
+    /// 구분이 안 된다는 지적 — 크기를 키우고 checked 상태를 채워진 심볼로 대비를 강화했다.
+    /// 버튼 라벨에 20x20 히트 영역을 명시해 시각 크기(13pt)보다 넉넉한 클릭 영역을 보장한다.
     private func checklistRow(_ item: ChecklistItem) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
             Button {
                 Task { await model.update(note, content: ChecklistParser.toggling(note.content, at: item)) }
             } label: {
-                Image(systemName: item.isChecked ? "checkmark.square" : "square")
-                    .font(.system(size: 11.5))
+                Image(systemName: item.isChecked ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 13))
                     .foregroundStyle(item.isChecked ? jjok : inkSoft)
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 

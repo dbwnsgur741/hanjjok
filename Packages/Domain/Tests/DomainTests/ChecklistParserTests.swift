@@ -39,16 +39,68 @@ final class ChecklistParserTests: XCTestCase {
 
     // MARK: - 마커 형식 검증 (wholeMatch)
 
-    func test_공백_없이_붙어있으면_항목_아님() {
+    /// QA r2: 마커 뒤 공백 요구가 완화되어 `[]abc`도 이제 항목으로 인식된다(스펙 개정 — 기존
+    /// "공백 없으면 항목 아님" 기대값을 뒤집음).
+    func test_마커_뒤_공백_없어도_항목_인식() {
         let content = "[]abc"
         let items = ChecklistParser.items(in: content)
-        XCTAssertEqual(items.count, 0)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].isChecked, false)
+        XCTAssertEqual(items[0].text, "abc")
     }
 
     func test_문장_중간의_체크박스는_항목_아님() {
         let content = "좌표 [x] 표"
         let items = ChecklistParser.items(in: content)
         XCTAssertEqual(items.count, 0)
+    }
+
+    // MARK: - QA r2 추가 케이스
+
+    func test_공백_없는_대괄호_한글_할일() {
+        let content = "[]할일"
+        let items = ChecklistParser.items(in: content)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].isChecked, false)
+        XCTAssertEqual(items[0].text, "할일")
+    }
+
+    func test_공백_없는_체크됨_한글_완료() {
+        let content = "[x]완료"
+        let items = ChecklistParser.items(in: content)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].isChecked, true)
+        XCTAssertEqual(items[0].text, "완료")
+    }
+
+    func test_하이픈_접두_공백_없는_마커() {
+        let content = "-[ ] 할일"
+        let items = ChecklistParser.items(in: content)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].isChecked, false)
+        XCTAssertEqual(items[0].text, "할일")
+    }
+
+    func test_별표_접두_허용() {
+        let content = "* [ ] 별표"
+        let items = ChecklistParser.items(in: content)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].isChecked, false)
+        XCTAssertEqual(items[0].text, "별표")
+    }
+
+    func test_마커_클래스_불일치는_항목_아님() {
+        let content = "[1] 참고"
+        let items = ChecklistParser.items(in: content)
+        XCTAssertEqual(items.count, 0)
+    }
+
+    func test_공백_없는_마커_토글_라운드트립() {
+        let content = "[]할일"
+        let items = ChecklistParser.items(in: content)
+        XCTAssertEqual(items.count, 1)
+        let toggled = ChecklistParser.toggling(content, at: items[0])
+        XCTAssertEqual(toggled, "[x]할일")
     }
 
     // MARK: - lineRange 오프셋 정확성

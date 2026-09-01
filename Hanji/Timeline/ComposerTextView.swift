@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Domain
 
 /// 한글 IME 안전 컴포저.
 /// `TextEditor.onKeyPress`는 한글 조합 중 Enter에서 마지막 글자를 잃을 수 있다.
@@ -58,12 +59,30 @@ struct ComposerTextView: NSViewRepresentable {
                 // Shift+Enter는 줄바꿈으로 통과 — 단, 한 줄 모드(이름 필드)는 줄바꿈이 필요
                 // 없으므로 항상 제출 처리한다.
                 if !parent.singleLine, NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
-                    return false
+                    return handleChecklistContinuation(in: textView)
                 }
                 parent.onSubmit()
                 return true
             }
             return false
+        }
+
+        /// [QA r2] 체크리스트 연속 입력 — Shift+Enter를 누른 캐럿이 있는 현재 줄이 체크리스트
+        /// 항목(본문 있음)이면 다음 줄에도 자동으로 `"[] "` 마커를 이어 붙여 매 줄 버튼을
+        /// 다시 누르지 않아도 되게 한다. 마커만 있고 본문이 빈 줄(연속 입력을 끝내려는 신호)
+        /// 이거나 애초에 체크리스트 항목이 아니면 일반 줄바꿈으로 통과시킨다(무한 마커 방지).
+        /// 다중행 컴포저 전체(메인 컴포저 + NoteCardView 인라인 수정)가 이 경로를 공유한다 —
+        /// singleLine 모드(DrawerView)는 위 분기에서 이미 걸러져 영향받지 않는다.
+        private func handleChecklistContinuation(in textView: NSTextView) -> Bool {
+            let ns = textView.string as NSString
+            let caretRange = textView.selectedRange()
+            let lineRange = ns.lineRange(for: caretRange)
+            let currentLine = ns.substring(with: lineRange).trimmingCharacters(in: .newlines)
+            guard let item = ChecklistParser.items(in: currentLine).first, !item.text.isEmpty else {
+                return false
+            }
+            textView.insertText("\n[] ", replacementRange: caretRange)
+            return true
         }
     }
 }
