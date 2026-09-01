@@ -17,6 +17,9 @@ struct TimelineView: View {
     // [Task 24] 컴포저 체크리스트 버튼이 NSTextView에 직접 마커를 삽입할 때 쓰는 브릿지.
     // 메인 컴포저에만 연결한다(카드 인라인 수정·드로어 이름 필드는 미연결).
     @State private var composerCommands = ComposerCommands()
+    // [QA r3 ②] 컴포저가 고정 높이(44~120)라 내용만큼 자라지 않는다는 지적 — 이제
+    // ComposerTextView.onHeightChange가 보고하는 값으로 매 프레임 갱신한다.
+    @State private var composerHeight: CGFloat = 44
     // 설정 창에서 본문 글꼴 토글 시 이 패널(생성 후 재사용되는 단일 인스턴스)이 즉시 새로
     // 반영하도록 하는 배선 — @AppStorage는 body 안에서 값을 직접 읽지 않아도 해당
     // UserDefaults 키가 바뀔 때마다 SwiftUI가 이 뷰의 body를 다시 계산하게 만든다.
@@ -157,9 +160,12 @@ struct TimelineView: View {
                     text: $model.draft,
                     font: HanjiTheme.bodyNSFont(),
                     onSubmit: { Task { await model.submit() } },
-                    commands: composerCommands)
+                    commands: composerCommands,
+                    // [QA r3 ②] 160 초과분은 NSScrollView가 스크롤한다(hasVerticalScroller는
+                    // false 그대로 — 스크롤 자체는 동작).
+                    onHeightChange: { composerHeight = min(max($0, 44), 160) })
             }
-            .frame(minHeight: 44, maxHeight: 120)
+            .frame(height: composerHeight)
             .padding(8)
             .background(RoundedRectangle(cornerRadius: 6).fill(card))
             .overlay(
@@ -170,6 +176,11 @@ struct TimelineView: View {
                 jjok: jjok,
                 isEnabled: !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ) {
+                // [QA r3 ⑤-a] 보내기 버튼은 NSTextView 포커스를 뺏지 않는다 — 한글 조합
+                // 중(marked)인 글자가 있으면 먼저 확정해서 읽어야 전송 후 잔여 텍스트가
+                // 남거나 마지막 글자가 유실되지 않는다. (Enter 경로는 IME가 조합을 먼저
+                // 확정하므로 원래 정상이었다.)
+                if let text = composerCommands.finalizeAndReadText() { model.draft = text }
                 Task { await model.submit() }
             }
         }

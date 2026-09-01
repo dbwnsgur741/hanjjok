@@ -15,8 +15,16 @@ struct NoteCardView: View {
     let model: TimelineModel
     @Environment(\.colorScheme) private var scheme
 
-    @State private var isEditing = false
+    // [QA r3 ⑤-b] 예전엔 카드마다 로컬 @State로 수정 중 여부를 들고 있어 카드 여러 개를
+    // 동시에 수정 가능한 버그가 있었다. model.editingNoteID를 앱 전체 단일 진실 소스로
+    // 삼아, 이 카드의 note.id와 같을 때만 수정 UI를 보여준다 — 다른 카드에서
+    // beginEditing()을 부르면 이 값이 그쪽 id로 바뀌면서 이 카드는 자동으로 내려간다.
+    private var isEditing: Bool { model.editingNoteID == note.id }
     @State private var editText = ""
+    // [QA r3 ②] 인라인 수정 필드의 자동 성장 높이 — beginEditing에서 40으로 리셋하지
+    // 않는다: onHeightChange가 첫 레이아웃 직후 새 내용 높이를 보고하며 자연히 수렴하고,
+    // 리셋하면 진입 시 40 → 실제 높이로 튀는 프레임 점프가 보인다.
+    @State private var editHeight: CGFloat = 40
     @State private var isHovering = false
 
     private var isDark: Bool { scheme == .dark }
@@ -32,12 +40,18 @@ struct NoteCardView: View {
                 ComposerTextView(
                     text: $editText,
                     font: HanjiTheme.bodyNSFont(),
-                    onSubmit: { commitEdit() })
-                    .frame(minHeight: 40, maxHeight: 200)
+                    onSubmit: { commitEdit() },
+                    // [QA r3 ③] 수정 중 다른 곳을 클릭해 포커스를 잃으면 커밋한다 — 예전엔
+                    // 포커스 아웃 커밋 경로 자체가 없어 변경 내용이 저장되지 않았다.
+                    onFocusLost: { commitEdit() },
+                    // [QA r3 ②] 고정 minHeight/maxHeight 대신 내용만큼 자라는 높이로 교체.
+                    onHeightChange: { editHeight = min(max($0, 40), 320) })
+                    .frame(height: editHeight)
                     // 수정 중 Esc는 수정만 취소한다 — 패널은 닫히지 않는다 (Task 12 요구사항).
                     // onExitCommand는 cancelOperation: 을 responder 체인에서 이 뷰가 소비하도록 하므로
-                    // 상위(패널)로 이벤트가 전파되지 않는다.
-                    .onExitCommand { isEditing = false }
+                    // 상위(패널)로 이벤트가 전파되지 않는다. editingNoteID를 nil로 되돌리면
+                    // isEditing이 파생 프로퍼티라 자동으로 false가 된다(QA r3).
+                    .onExitCommand { model.editingNoteID = nil }
             } else if checklistItems.isEmpty {
                 contentText
             } else {
@@ -229,21 +243,34 @@ struct NoteCardView: View {
         }
     }
 
-    /// 체크리스트 항목 한 줄 — 체크박스(13pt, unchecked=inkSoft `square`·checked=jjok
-    /// `checkmark.square.fill`) + 본문. 완료 항목은 취소선 + inkSoft로 흐리게, 미완료 항목은
-    /// 일반 본문과 같은 색(환경 기본 ink). QA r2: 11.5pt inkSoft 외곽선만으로는 체크박스인지
-    /// 구분이 안 된다는 지적 — 크기를 키우고 checked 상태를 채워진 심볼로 대비를 강화했다.
-    /// 버튼 라벨에 20x20 히트 영역을 명시해 시각 크기(13pt)보다 넉넉한 클릭 영역을 보장한다.
+    /// 체크리스트 항목 한 줄 — 체크박스(15pt, 라운드 사각형) + 본문. 완료 항목은 취소선 +
+    /// inkSoft로 흐리게, 미완료 항목은 일반 본문과 같은 색(환경 기본 ink). QA r2에서 SF
+    /// Symbol(square/checkmark.square.fill)로 바꿨지만 "여전히 배열같이 보인다"는 지적
+    /// (QA r3 ①) — SF 심볼을 버리고 커스텀 드로잉으로 교체: 미완료는 사각 inkSoft 1.5pt
+    /// 외곽선(속 투명), 완료는 jjok 채움 위에 백색 굵은 체크마크. 버튼 라벨에 20x20 히트
+    /// 영역을 명시해 시각 크기(15pt)보다 넉넉한 클릭 영역을 보장한다.
     private func checklistRow(_ item: ChecklistItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
             Button {
                 Task { await model.update(note, content: ChecklistParser.toggling(note.content, at: item)) }
             } label: {
-                Image(systemName: item.isChecked ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 13))
-                    .foregroundStyle(item.isChecked ? jjok : inkSoft)
-                    .frame(width: 20, height: 20)
-                    .contentShape(Rectangle())
+                ZStack {
+                    // 미완료: 사각 inkSoft 1.5pt 외곽선, 속 투명 (QA r3 ①).
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(inkSoft.opacity(0.8), lineWidth: 1.5)
+                        .opacity(item.isChecked ? 0 : 1)
+                    // 완료: jjok 채움 + 백색 체크(checkmark 심볼 9pt bold 백색).
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(jjok)
+                        .opacity(item.isChecked ? 1 : 0)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .opacity(item.isChecked ? 1 : 0)
+                }
+                .frame(width: 15, height: 15)
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -296,15 +323,26 @@ struct NoteCardView: View {
 
     private func beginEditing() {
         editText = note.content
-        isEditing = true
+        model.editingNoteID = note.id
     }
 
+    /// [QA r3 ③] `model.editingNoteID`가 여전히 이 카드를 가리킬 때만 커밋한다. 이 guard가
+    /// 없으면 두 경로가 겹칠 때 이중 커밋이 난다 — 예를 들어 Enter로 이미 커밋해
+    /// editingNoteID가 nil이 된 뒤 텍스트 필드 teardown이 뒤늦게 textDidEndEditing을 보내는
+    /// 경우, 또는 Esc로 editingNoteID를 nil로 되돌린 뒤 같은 teardown이 오는 경우.
+    /// 카드 전환 시(새 카드 beginEditing → 이전 카드 포커스 아웃) 이벤트 도착 순서는
+    /// 일반적으로 "이전 NSTextView의 textDidEndEditing이 먼저, 새 beginEditing이 그다음"이라
+    /// guard 통과 시점엔 아직 editingNoteID가 이전 카드를 가리켜 정상 커밋되지만, 반대
+    /// 순서로 도착해도(새 beginEditing이 먼저 editingNoteID를 새 id로 바꿔버린 경우) 이
+    /// guard가 이전 카드의 커밋을 조용히 막아 이중 커밋은 막힌다 — 다만 그 경우 이전 카드의
+    /// 미커밋 변경은 유실된다(수동 확인 필요, 브리프 §C.2 명시적 언급).
     private func commitEdit() {
+        guard model.editingNoteID == note.id else { return }
         let text = editText
         Task {
             await model.update(note, content: text)
         }
-        isEditing = false
+        model.editingNoteID = nil
     }
 }
 

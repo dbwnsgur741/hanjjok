@@ -12,6 +12,14 @@ final class TimelineModel {
     var notes: [Note] = []       // 표시용 — createdAt 오름차순 (아래가 최신)
     var draft = ""
 
+    // MARK: - 인라인 수정 (QA r3)
+
+    /// 현재 인라인 수정 중인 카드의 note.id — nil이면 아무 카드도 수정 중이 아니다.
+    /// 수정 중 상태는 앱 전체 1개(스펙 §3, QA r3). NoteCardView.isEditing이 이 값을
+    /// 참조해 파생하며, 예전처럼 카드마다 로컬 @State로 관리하면 여러 카드가 동시에
+    /// 편집 가능해지는 버그가 있었다(QA r3 ⑤-b).
+    var editingNoteID: UUID?
+
     // MARK: - 검색 (Task 13)
 
     var isSearching = false

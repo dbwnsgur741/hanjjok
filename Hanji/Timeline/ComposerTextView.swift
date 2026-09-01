@@ -17,6 +17,15 @@ struct ComposerTextView: NSViewRepresentable {
     /// 기본값 nil이라 카드 인라인 수정(NoteCardView)·드로어 이름 필드(DrawerView)의 기존
     /// 호출부는 이 인자를 몰라도 소스 호환된다.
     var commands: ComposerCommands? = nil
+    /// [QA r3 ③] 이 필드가 포커스를 잃을 때(Coordinator.textDidEndEditing) 호출된다.
+    /// NoteCardView 인라인 수정이 여기 연결해 "수정 후 다른 곳 클릭 시 커밋 안 됨" 버그를
+    /// 고친다. 기본값 nil이라 메인 컴포저·드로어 이름 필드는 이 인자를 몰라도 소스 호환된다.
+    var onFocusLost: (() -> Void)? = nil
+    /// [QA r3 ②] 내용 높이가 바뀔 때마다 보고한다(값은 textContainer의 usedRect 높이 +
+    /// 위아래 인셋). 호출부가 이 값으로 `.frame(height:)`를 갱신하면 고정 높이 필드가
+    /// 내용만큼 자란다. 기본값 nil이라 드로어 한 줄 필드 등 자동 성장이 필요 없는 호출부는
+    /// 이 인자를 몰라도 소스 호환된다.
+    var onHeightChange: ((CGFloat) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -38,20 +47,54 @@ struct ComposerTextView: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
+        // 스테일 클로저 방지(표준 관례) — SwiftUI가 새 ComposerTextView 값으로 이 메서드를
+        // 부르는 시점에 Coordinator가 들고 있던 이전 parent(옛 onSubmit/onFocusLost 등
+        // 클로저)를 최신 것으로 갱신한다.
+        context.coordinator.parent = self
         let textView = scroll.documentView as! NSTextView
         if textView.string != text {
+            // [QA r3 ⑤] 조합 중(marked) 텍스트가 남아 있는 상태로 string을 통째로 교체하면
+            // IME 조합 버퍼가 불안정해져 잔여 텍스트가 생긴다 — 대입 전 항상 확정한다.
+            if textView.hasMarkedText() { textView.unmarkText() }
             textView.string = text
         }
         textView.font = font
+        context.coordinator.reportHeight(from: textView)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ComposerTextView
+        /// [QA r3 ②] 직전에 보고한 높이 — 0.5pt 미만 변화는 다시 보고하지 않아 SwiftUI 쪽
+        /// height binding ↔ NSTextView 레이아웃 사이의 무한 갱신 루프를 막는다.
+        private var lastReportedHeight: CGFloat?
         init(_ parent: ComposerTextView) { self.parent = parent }
 
         func textDidChange(_ notification: Notification) {
             guard let tv = notification.object as? NSTextView else { return }
             parent.text = tv.string
+            reportHeight(from: tv)
+        }
+
+        /// [QA r3 ③] 포커스 아웃 — 인라인 수정 필드가 이걸 통해 커밋을 트리거한다.
+        func textDidEndEditing(_ notification: Notification) {
+            parent.onFocusLost?()
+        }
+
+        /// [QA r3 ②] 내용 높이를 계산해 직전 보고값과 0.5pt 이상 차이날 때만 콜백한다.
+        /// `DispatchQueue.main.async`로 넘기는 이유: 이 메서드가 SwiftUI의 뷰 업데이트
+        /// 사이클 도중(updateNSView 끝)에도 불리는데, 그 안에서 바로 @State를 바꾸면
+        /// "Modifying state during view update" 경고가 뜬다.
+        func reportHeight(from textView: NSTextView) {
+            guard let onHeightChange = parent.onHeightChange,
+                  let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else { return }
+            layoutManager.ensureLayout(for: textContainer)
+            let used = layoutManager.usedRect(for: textContainer)
+            let height = used.height + textView.textContainerInset.height * 2
+            if lastReportedHeight == nil || abs(height - lastReportedHeight!) > 0.5 {
+                lastReportedHeight = height
+                DispatchQueue.main.async { onHeightChange(height) }
+            }
         }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
@@ -102,5 +145,14 @@ final class ComposerCommands {
         let ns = textView.string as NSString
         let lineStart = ns.lineRange(for: textView.selectedRange()).location
         textView.insertText("[] ", replacementRange: NSRange(location: lineStart, length: 0))
+    }
+
+    /// 조합 중(marked) 텍스트를 확정하고 확정된 전체 문자열을 돌려준다.
+    /// 보내기 버튼처럼 포커스를 뺏지 않는 경로는 전송 전 반드시 이걸 거쳐야
+    /// 조합 중 글자 유실·잔여 텍스트가 없다 (QA r3 ⑤).
+    func finalizeAndReadText() -> String? {
+        guard let textView else { return nil }
+        if textView.hasMarkedText() { textView.unmarkText() }
+        return textView.string
     }
 }
