@@ -16,7 +16,7 @@ struct HeaderView: View {
     var body: some View {
         HStack(spacing: 8) {
             Text("한지")
-                .font(HanjiTheme.bodyFont(size: 15))
+                .font(HanjiTheme.bodyBoldFont(size: 15))
             Text(filterName)
                 .font(HanjiTheme.uiFont(size: 11))
                 .foregroundStyle(inkSoft)

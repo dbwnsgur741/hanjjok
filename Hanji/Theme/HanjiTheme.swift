@@ -106,6 +106,14 @@ enum HanjiTheme {
         themeLog.fault("본문 폰트 '\(name, privacy: .public)' 로드 실패 — 시스템 폰트로 대체 (번들 손상 의심)")
         return .systemFont(ofSize: size)
     }
+    /// 헤더 워드마크("한지") 전용 — MaruBuri Bold("SB급" 굵기). 본문(bodyFont)에는 쓰지 않는다.
+    static func bodyBoldFont(size: CGFloat = 15) -> Font {
+        guard NSFont(name: FontName.maruBuriBold, size: size) != nil else {
+            themeLog.fault("굵은 본문 폰트 '\(FontName.maruBuriBold, privacy: .public)' 로드 실패 — 시스템 폰트로 대체 (번들 손상 의심)")
+            return .system(size: size, weight: .semibold)
+        }
+        return .custom(FontName.maruBuriBold, size: size)
+    }
     static func uiFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom(weight == .semibold ? FontName.pretendardSemiBold : FontName.pretendardRegular, size: size)
     }
@@ -133,6 +141,7 @@ enum HanjiTheme {
 ///        "Pretendard-Regular", "Pretendard-SemiBold"]
 enum FontName {
     static let maruBuriRegular = "MaruBuriot-Regular"
+    static let maruBuriBold = "MaruBuriot-Bold"
     static let pretendardRegular = "Pretendard-Regular"
     static let pretendardSemiBold = "Pretendard-SemiBold"
 }
