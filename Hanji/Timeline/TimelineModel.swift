@@ -89,16 +89,22 @@ final class TimelineModel {
         await loadFolderData()
     }
 
-    func submit() async {
+    /// [QA r4 ①] 저장 성공(가드 통과 + repo.save 성공) 시에만 true를 돌려준다 — TimelineView의
+    /// sendFromComposer()가 이 값으로 "컴포저를 비워도 되는가"를 판단한다. `@discardableResult`라
+    /// 반환값을 무시하는 기존 호출부(있다면)는 그대로 컴파일된다.
+    @discardableResult
+    func submit() async -> Bool {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else { return false }
         let note = Note(id: UUID(), content: text, createdAt: Date(), updatedAt: nil)
         do {
             try await repo.save(note)
             HanjiTheme.motion { notes.append(note) }
             draft = ""
+            return true
         } catch {
             log.error("저장 실패: \(error)")
+            return false
         }
     }
 

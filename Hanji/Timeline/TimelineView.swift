@@ -125,6 +125,14 @@ struct TimelineView: View {
                             proxy.scrollTo(last.id, anchor: .bottom)
                         }
                     }
+                    // [QA r4 ②] 타임라인(카드들이 없는 빈 영역 포함) 클릭 시 first responder를
+                    // 명시적으로 내려놓는다 — simultaneousGesture라 카드의 더블클릭·체크박스·
+                    // 버튼 제스처와 공존한다(다른 카드를 클릭해도 이전 수정이 먼저 닫힌다).
+                    // 컴포저 자체가 아니라 이 ScrollView에만 걸어, 컴포저 영역 클릭으로는
+                    // 포커스가 빠지지 않게 범위를 한정한다.
+                    .simultaneousGesture(TapGesture().onEnded {
+                        if model.editingNoteID != nil { NSApp.keyWindow?.makeFirstResponder(nil) }
+                    })
                 }
             }
             Divider()
@@ -159,7 +167,7 @@ struct TimelineView: View {
                 ComposerTextView(
                     text: $model.draft,
                     font: HanjiTheme.bodyNSFont(),
-                    onSubmit: { Task { await model.submit() } },
+                    onSubmit: sendFromComposer,
                     commands: composerCommands,
                     // [QA r3 ②] 160 초과분은 NSScrollView가 스크롤한다(hasVerticalScroller는
                     // false 그대로 — 스크롤 자체는 동작).
@@ -174,17 +182,24 @@ struct TimelineView: View {
             ComposerSendButton(
                 inkSoft: inkSoft,
                 jjok: jjok,
-                isEnabled: !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ) {
-                // [QA r3 ⑤-a] 보내기 버튼은 NSTextView 포커스를 뺏지 않는다 — 한글 조합
-                // 중(marked)인 글자가 있으면 먼저 확정해서 읽어야 전송 후 잔여 텍스트가
-                // 남거나 마지막 글자가 유실되지 않는다. (Enter 경로는 IME가 조합을 먼저
-                // 확정하므로 원래 정상이었다.)
-                if let text = composerCommands.finalizeAndReadText() { model.draft = text }
-                Task { await model.submit() }
-            }
+                isEnabled: !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                action: sendFromComposer)
         }
         .padding(8)
+    }
+
+    /// [QA r4 ①] 컴포저의 단일 전송 경로 — Enter(ComposerTextView.onSubmit)와 보내기 버튼
+    /// 둘 다 이걸 거친다(중복 로직 제거). 보내기 버튼은 NSTextView 포커스를 뺏지 않으므로
+    /// 한글 조합 중(marked)인 글자가 있으면 finalizeAndReadText가 먼저 확정해서 읽어야
+    /// 전송 후 잔여 텍스트가 남거나 마지막 글자가 유실되지 않는다(QA r3 ⑤-a, Enter 경로는
+    /// IME가 조합을 먼저 확정하므로 원래 정상). 저장이 실제로 성공했을 때만(model.submit()이
+    /// true) NSTextView를 clearText()로 직접 비운다 — SwiftUI의 updateNSView diff 경로에만
+    /// 맡기면 잔존 텍스트가 재발했다(사용자 2회 보고).
+    private func sendFromComposer() {
+        if let text = composerCommands.finalizeAndReadText() { model.draft = text }
+        Task {
+            if await model.submit() { composerCommands.clearText() }
+        }
     }
 
     /// 검색 바 — tokens.md "검색 입력 Pretendard 14pt". 활성 태그 필터는 기존 태그 칩과

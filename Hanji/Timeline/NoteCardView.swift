@@ -346,6 +346,9 @@ struct NoteCardView: View {
     /// 미커밋 변경은 유실된다(수동 확인 필요, 브리프 §C.2 명시적 언급).
     private func commitEdit() {
         guard model.editingNoteID == note.id else { return }
+        // [QA r4 ②] 변경이 없으면 저장 없이 종료 — updatedAt이 헛되이 갱신되어
+        // "수정" 표기가 붙는 것을 막는다.
+        guard editText != note.content else { model.editingNoteID = nil; return }
         let text = editText
         Task {
             await model.update(note, content: text)

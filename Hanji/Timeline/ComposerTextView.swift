@@ -97,35 +97,41 @@ struct ComposerTextView: NSViewRepresentable {
             }
         }
 
+        /// [QA r4] MD 에디터식 Enter 의미론(스펙 §8 ⑦ 확정) — r2의 "Shift+Enter 연속" 규칙을
+        /// 대체한다. singleLine(드로어 이름 필드)은 예전처럼 Enter가 곧 제출이다. 다중행
+        /// 모드는 Shift+Enter가 항상 일반 줄바꿈(ⓓ, 항목 뒤에 평문을 넣는 통로)이고, 캐럿이
+        /// 있는 줄이 체크리스트 항목이면 Enter가 본문 유무로 갈린다: 본문 있으면 다음 줄에
+        /// 새 마커를 이어 붙여 연속 입력(ⓐ, 제출 아님), 본문 없으면(리스트를 끝내려는 신호)
+        /// 그 빈 마커 줄을 지우고 제출한다(ⓑ). 체크리스트 줄이 아니면 예전처럼 Enter = 제출
+        /// (ⓒ, 카톡식 유지).
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             if selector == #selector(NSResponder.insertNewline(_:)) {
-                // Shift+Enter는 줄바꿈으로 통과 — 단, 한 줄 모드(이름 필드)는 줄바꿈이 필요
-                // 없으므로 항상 제출 처리한다.
-                if !parent.singleLine, NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
-                    return handleChecklistContinuation(in: textView)
+                if parent.singleLine { parent.onSubmit(); return true }
+                // ⓓ Shift+Enter = 항상 일반 줄바꿈 — 항목 뒤에 일반 텍스트를 넣는 통로.
+                if NSApp.currentEvent?.modifierFlags.contains(.shift) == true { return false }
+                let ns = textView.string as NSString
+                let caretRange = textView.selectedRange()
+                let lineRange = ns.lineRange(for: caretRange)
+                let currentLine = ns.substring(with: lineRange).trimmingCharacters(in: .newlines)
+                if let item = ChecklistParser.items(in: currentLine).first {
+                    if item.text.isEmpty {
+                        // ⓑ 빈 항목에서 Enter = 마커 줄 삭제 후 제출(리스트 끝내고 전송).
+                        // insertText가 textDidChange를 동기 발화해 draft가 갱신된 뒤 —
+                        // 그 순서 그대로 — onSubmit이 실행돼야 한다(순서 뒤집으면 옛 마커
+                        // 줄이 저장됨).
+                        textView.insertText("", replacementRange: lineRange)
+                        parent.onSubmit()
+                        return true
+                    }
+                    // ⓐ 본문 있는 항목에서 Enter = 다음 항목 자동 연속(전송 아님).
+                    textView.insertText("\n[] ", replacementRange: caretRange)
+                    return true
                 }
+                // ⓒ 일반 줄에서 Enter = 제출(카톡식 유지).
                 parent.onSubmit()
                 return true
             }
             return false
-        }
-
-        /// [QA r2] 체크리스트 연속 입력 — Shift+Enter를 누른 캐럿이 있는 현재 줄이 체크리스트
-        /// 항목(본문 있음)이면 다음 줄에도 자동으로 `"[] "` 마커를 이어 붙여 매 줄 버튼을
-        /// 다시 누르지 않아도 되게 한다. 마커만 있고 본문이 빈 줄(연속 입력을 끝내려는 신호)
-        /// 이거나 애초에 체크리스트 항목이 아니면 일반 줄바꿈으로 통과시킨다(무한 마커 방지).
-        /// 다중행 컴포저 전체(메인 컴포저 + NoteCardView 인라인 수정)가 이 경로를 공유한다 —
-        /// singleLine 모드(DrawerView)는 위 분기에서 이미 걸러져 영향받지 않는다.
-        private func handleChecklistContinuation(in textView: NSTextView) -> Bool {
-            let ns = textView.string as NSString
-            let caretRange = textView.selectedRange()
-            let lineRange = ns.lineRange(for: caretRange)
-            let currentLine = ns.substring(with: lineRange).trimmingCharacters(in: .newlines)
-            guard let item = ChecklistParser.items(in: currentLine).first, !item.text.isEmpty else {
-                return false
-            }
-            textView.insertText("\n[] ", replacementRange: caretRange)
-            return true
         }
     }
 }
@@ -154,5 +160,13 @@ final class ComposerCommands {
         guard let textView else { return nil }
         if textView.hasMarkedText() { textView.unmarkText() }
         return textView.string
+    }
+
+    /// [QA r4 ①] 전송 성공 직후 NSTextView를 소스에서 직접 비운다 — SwiftUI의
+    /// updateNSView diff 경로에만 의존하면 잔존 텍스트가 재발했다(사용자 2회 보고).
+    func clearText() {
+        guard let textView else { return }
+        if textView.hasMarkedText() { textView.unmarkText() }
+        textView.string = ""
     }
 }
