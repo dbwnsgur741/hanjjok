@@ -13,7 +13,7 @@ public enum MarkdownExporter {
         timeFormatter.timeZone = timeZone
         timeFormatter.locale = Locale(identifier: "en_US_POSIX")
 
-        var out = "# 한지 전체 내보내기\n"
+        var out = "# 갈피 전체 내보내기\n"
         var currentDay = ""
         for note in notes {
             let day = dayFormatter.string(from: note.createdAt)

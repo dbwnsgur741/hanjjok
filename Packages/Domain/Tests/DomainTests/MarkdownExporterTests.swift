@@ -15,7 +15,7 @@ final class MarkdownExporterTests: XCTestCase {
         ]
         let md = MarkdownExporter.export(notes, timeZone: TimeZone(identifier: "Asia/Seoul")!)
         XCTAssertEqual(md, """
-        # 한지 전체 내보내기
+        # 갈피 전체 내보내기
 
         ## 2026-08-30
 
@@ -30,6 +30,6 @@ final class MarkdownExporterTests: XCTestCase {
         """)
     }
     func test_빈_목록() {
-        XCTAssertEqual(MarkdownExporter.export([], timeZone: .current), "# 한지 전체 내보내기\n")
+        XCTAssertEqual(MarkdownExporter.export([], timeZone: .current), "# 갈피 전체 내보내기\n")
     }
 }

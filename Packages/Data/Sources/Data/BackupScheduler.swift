@@ -14,13 +14,13 @@ public enum BackupScheduler {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        let target = backupsDir.appendingPathComponent("hanji-\(formatter.string(from: now)).sqlite")
+        let target = backupsDir.appendingPathComponent("galpi-\(formatter.string(from: now)).sqlite")
         guard !fm.fileExists(atPath: target.path) else { return false }
 
         try repository.backup(to: target)
 
         let backups = try fm.contentsOfDirectory(at: backupsDir, includingPropertiesForKeys: nil)
-            .filter { $0.lastPathComponent.hasPrefix("hanji-") && $0.pathExtension == "sqlite" }
+            .filter { $0.lastPathComponent.hasPrefix("galpi-") && $0.pathExtension == "sqlite" }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         for old in backups.dropLast(keep) {
             try fm.removeItem(at: old)
