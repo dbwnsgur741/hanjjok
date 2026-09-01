@@ -11,6 +11,9 @@ struct SettingsView: View {
     @AppStorage("panelSide") private var panelSide = PanelSide.right.rawValue
     @AppStorage("panelWidth") private var panelWidth = 360.0
     @AppStorage("usePretendardBody") private var usePretendardBody = false
+    // [Task 24] "system"(기본)/"light"/"dark" — AppDelegate.applyAppearance()가
+    // UserDefaults.didChangeNotification을 거쳐 NSApp.appearance에 즉시 반영한다.
+    @AppStorage("appearanceMode") private var appearanceMode = "system"
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -23,6 +26,11 @@ struct SettingsView: View {
             Picker("본문 글꼴:", selection: $usePretendardBody) {
                 Text("마루 부리 (붓글씨)").tag(false)
                 Text("프리텐다드 (고딕)").tag(true)
+            }
+            Picker("화면 모드:", selection: $appearanceMode) {
+                Text("시스템").tag("system")
+                Text("밝게").tag("light")
+                Text("어둡게").tag("dark")
             }
             LabeledContent("패널 폭: \(Int(panelWidth))pt") {
                 Slider(value: $panelWidth, in: 300...480, step: 10)

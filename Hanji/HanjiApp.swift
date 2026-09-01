@@ -27,6 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var model: TimelineModel!
     private var settingsWindow: NSWindow?
     private var defaultsObserver: NSObjectProtocol?
+    // [Task 24] applyAppearance()의 값 비교 가드가 쓰는 마지막 적용값 — defaultsObserver가
+    // 단축키 녹화·글꼴 토글 등 무관한 defaults 변경에도 매번 발동하므로, 실제로 모드 문자열이
+    // 달라졌을 때만 NSApp.appearance를 다시 대입한다(패널 위치/폭과 같은 관례, Task 14 리뷰 지적 이월).
+    private var lastAppliedAppearance: String?
 
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -44,8 +48,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let side = currentPanelSide()
         let width = currentPanelWidth()
-        let host = NSHostingView(rootView: PanelRootView(model: model))
+        // [Task 24] TimelineView가 직접 NSApp.delegate를 캐스팅해 openSettings()를 부르던
+        // 배선은 SwiftUI 수명주기에서 NSApp.delegate가 내부 델리게이트라 항상 nil이 되어
+        // 설정 버튼이 무반응이었다(실사용 버그) — PanelRootView에 클로저로 직접 주입한다.
+        let host = NSHostingView(
+            rootView: PanelRootView(model: model, onOpenSettings: { [weak self] in self?.openSettings() }))
         panelController = EdgePanelController(contentView: host, side: side, width: width)
+        applyAppearance()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
@@ -75,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if self.panelController.side.rawValue != side.rawValue { self.panelController.side = side }
             let width = self.currentPanelWidth()
             if self.panelController.width != width { self.panelController.width = width }
+            self.applyAppearance()
         }
     }
 
@@ -86,6 +96,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func currentPanelWidth() -> CGFloat {
         let stored = UserDefaults.standard.double(forKey: "panelWidth")
         return stored > 0 ? stored : 360
+    }
+
+    /// [Task 24] 화면 모드 — SettingsView의 Picker("화면 모드")가 "system"/"light"/"dark"로
+    /// appearanceMode에 쓰면, defaultsObserver를 거쳐 여기서 NSApp.appearance에 즉시 반영한다.
+    /// 마지막으로 적용한 문자열과 같으면 재대입하지 않는다(panelSide/panelWidth와 동일한
+    /// 값 비교 가드 관례 — 무관한 defaults 변경마다 appearance를 다시 쓰지 않기 위함).
+    @MainActor private func applyAppearance() {
+        let mode = UserDefaults.standard.string(forKey: "appearanceMode") ?? "system"
+        guard mode != lastAppliedAppearance else { return }
+        lastAppliedAppearance = mode
+        switch mode {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: NSApp.appearance = nil
+        }
     }
 
     @MainActor @objc private func statusItemClicked() {

@@ -58,7 +58,7 @@ struct NoteCardView: View {
                         .font(HanjiTheme.uiFont(size: 10.5))
                         .foregroundStyle(inkSoft)
                 }
-                Text(note.createdAt.formatted(date: .omitted, time: .shortened))
+                Text(timestampLabel)
                     .font(HanjiTheme.uiFont(size: 10.5))
                     .foregroundStyle(inkSoft)
             }
@@ -137,6 +137,21 @@ struct NoteCardView: View {
 
     private func move(to folderId: UUID?) {
         Task { await model.move(note: note, to: folderId) }
+    }
+
+    /// [Task 24] 카드 푸터 시각 — 생성 시각(`HH:mm`, 기존 `.shortened` 유지)에 `updatedAt`이
+    /// 있으면 " · 수정 " 을 병기한다. 수정일이 생성일과 같은 날이면 시각만(`14:30`),
+    /// 다른 날이면 "9월 1일 14:30"처럼 날짜까지 보여준다(ko_KR DateFormatter,
+    /// TimelineView.groupedByDay의 DaySeparator 날짜 표기 관례와 동일한 포맷).
+    private var timestampLabel: String {
+        let created = note.createdAt.formatted(date: .omitted, time: .shortened)
+        guard let updatedAt = note.updatedAt else { return created }
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "ko_KR")
+        df.dateFormat = Calendar.current.isDate(updatedAt, inSameDayAs: note.createdAt)
+            ? "HH:mm"
+            : "M월 d일 HH:mm"
+        return "\(created) · 수정 \(df.string(from: updatedAt))"
     }
 
     /// 본문 렌더링 — 검색 매치 구간을 jjok 바탕·전경으로 하이라이트한다 (tokens.md "매치 · 본문").

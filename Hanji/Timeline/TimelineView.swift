@@ -7,8 +7,16 @@ private let timelineLog = Logger(subsystem: "kr.hurdlers.Hanji", category: "time
 
 struct TimelineView: View {
     @Bindable var model: TimelineModel
+    // [Task 24] PanelRootView가 AppDelegate로부터 받은 클로저를 그대로 전달한다 — 이전에는
+    // 여기서 `(NSApp.delegate as? AppDelegate)?.openSettings()`로 직접 캐스팅했는데,
+    // SwiftUI 수명주기에서 NSApp.delegate는 내부 델리게이트라 캐스트가 항상 nil이 되어
+    // 설정 버튼이 무반응이었다(실사용 버그).
+    let onOpenSettings: () -> Void
     @Environment(\.colorScheme) private var scheme
     @FocusState private var searchFieldFocused: Bool
+    // [Task 24] 컴포저 체크리스트 버튼이 NSTextView에 직접 마커를 삽입할 때 쓰는 브릿지.
+    // 메인 컴포저에만 연결한다(카드 인라인 수정·드로어 이름 필드는 미연결).
+    @State private var composerCommands = ComposerCommands()
     // 설정 창에서 본문 글꼴 토글 시 이 패널(생성 후 재사용되는 단일 인스턴스)이 즉시 새로
     // 반영하도록 하는 배선 — @AppStorage는 body 안에서 값을 직접 읽지 않아도 해당
     // UserDefaults 키가 바뀔 때마다 SwiftUI가 이 뷰의 body를 다시 계산하게 만든다.
@@ -18,6 +26,9 @@ struct TimelineView: View {
 
     private var paper: Color { scheme == .dark ? HanjiTheme.paperDark : HanjiTheme.paperLight }
     private var ink: Color { scheme == .dark ? HanjiTheme.inkDark : HanjiTheme.inkLight }
+    // [Task 24] 컴포저 필드 구분 배경/체크리스트 버튼 색.
+    private var card: Color { scheme == .dark ? HanjiTheme.cardDark : HanjiTheme.cardLight }
+    private var inkSoft: Color { scheme == .dark ? HanjiTheme.inkSoftDark : HanjiTheme.inkSoftLight }
     private var grainTint: Color { scheme == .dark ? HanjiTheme.grainTintDark : HanjiTheme.grainTintLight }
     private var grainOpacity: Double { scheme == .dark ? HanjiTheme.grainOpacityDark : HanjiTheme.grainOpacityLight }
 
@@ -55,7 +66,7 @@ struct TimelineView: View {
                 filterName: model.filterName,
                 onSearch: { model.isSearching = true },
                 onTray: { model.toggleDrawer() },
-                onSettings: { (NSApp.delegate as? AppDelegate)?.openSettings() })
+                onSettings: onOpenSettings)
             Divider()
             // [Task 23] 1차 폴더 전환 바 — 폴더가 하나도 없으면 통째로 숨겨 타임라인 정체성을
             // 그대로 유지한다. 드로어보다 위(이 바 아래에서 드로어가 오버레이됨)에 둔다.
@@ -112,13 +123,44 @@ struct TimelineView: View {
                 }
             }
             Divider()
-            ComposerTextView(
-                text: $model.draft,
-                font: HanjiTheme.bodyNSFont(),
-                onSubmit: { Task { await model.submit() } })
-                .frame(minHeight: 44, maxHeight: 120)
-                .padding(8)
+            composerArea
         }
+    }
+
+    /// [Task 24] 컴포저 필드 구분 — 이전에는 배경이 패널 바탕과 같아 "메모 작성 중"이라는
+    /// 사실이 시각적으로 드러나지 않았다(QA 지적). card 톤 배경 + inkSoft 25% 테두리로
+    /// 감싸고, 비어 있을 때 플레이스홀더를 얹는다. 왼쪽 체크리스트 버튼은 현재 줄 시작에
+    /// "[] " 마커를 삽입한다(ChecklistParser가 기대하는 정확한 문자열).
+    private var composerArea: some View {
+        HStack(alignment: .bottom, spacing: 6) {
+            ComposerIconButton(systemName: "checklist", inkSoft: inkSoft, ink: ink) {
+                composerCommands.insertChecklistMarker()
+            }
+            ZStack(alignment: .topLeading) {
+                if model.draft.isEmpty {
+                    // ComposerTextView의 textContainerInset(멀티라인: width 12 · height 10)과
+                    // 정렬을 맞춰 타이핑된 첫 글자 자리와 겹치도록 한다.
+                    Text("새 메모…")
+                        .font(HanjiTheme.bodyFont())
+                        .foregroundStyle(inkSoft)
+                        .padding(.leading, 12)
+                        .padding(.top, 10)
+                        .allowsHitTesting(false)
+                }
+                ComposerTextView(
+                    text: $model.draft,
+                    font: HanjiTheme.bodyNSFont(),
+                    onSubmit: { Task { await model.submit() } },
+                    commands: composerCommands)
+            }
+            .frame(minHeight: 44, maxHeight: 120)
+            .padding(8)
+            .background(RoundedRectangle(cornerRadius: 6).fill(card))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(inkSoft.opacity(0.25), lineWidth: 1))
+        }
+        .padding(8)
     }
 
     /// 검색 바 — tokens.md "검색 입력 Pretendard 14pt". 활성 태그 필터는 기존 태그 칩과
@@ -195,5 +237,28 @@ struct DaySeparator: View {
         // 22 - 8 = 14 (위), 12 - 8 = 4 (아래)
         .padding(.top, HanjiTheme.seamMarginTop - HanjiTheme.cardSpacing)
         .padding(.bottom, HanjiTheme.seamMarginBottom - HanjiTheme.cardSpacing)
+    }
+}
+
+/// [Task 24] 컴포저 왼쪽 체크리스트 버튼 — HeaderView.HeaderIconButton과 같은 관례
+/// (SF Symbol template, 13pt, inkSoft 기본, 호버 시 ink로 전환, 22x22 히트 영역).
+private struct ComposerIconButton: View {
+    let systemName: String
+    let inkSoft: Color
+    let ink: Color
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(isHovering ? ink : inkSoft)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
     }
 }

@@ -12,6 +12,10 @@ struct ComposerTextView: NSViewRepresentable {
     /// 줄바꿈 없이 제출로 처리한다(이름 필드는 줄바꿈이 필요 없음). 기본값 false는 기존
     /// 다중행 컴포저(메모 작성·인라인 수정) 동작을 그대로 유지한다.
     var singleLine: Bool = false
+    /// [Task 24] 메인 컴포저의 체크리스트 삽입 버튼이 NSTextView를 직접 조작할 때 쓰는 브릿지.
+    /// 기본값 nil이라 카드 인라인 수정(NoteCardView)·드로어 이름 필드(DrawerView)의 기존
+    /// 호출부는 이 인자를 몰라도 소스 호환된다.
+    var commands: ComposerCommands? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -28,6 +32,7 @@ struct ComposerTextView: NSViewRepresentable {
             : NSSize(width: 12, height: 10)
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = false
+        commands?.textView = textView
         return scroll
     }
 
@@ -60,5 +65,23 @@ struct ComposerTextView: NSViewRepresentable {
             }
             return false
         }
+    }
+}
+
+/// [Task 24] 컴포저 체크리스트 버튼 → NSTextView 브릿지. ComposerTextView.makeNSView가
+/// 생성 시 `textView`를 채워주면, SwiftUI 쪽 버튼 액션이 이 클래스를 통해 NSTextView에
+/// 직접 마커를 삽입한다(SwiftUI에는 NSTextView의 selectedRange 등을 직접 만질 방법이 없음).
+@MainActor
+final class ComposerCommands {
+    weak var textView: NSTextView?
+
+    /// 캐럿이 있는 줄의 시작 위치에 체크리스트 마커 `"[] "`를 삽입한다.
+    /// ChecklistParser의 lineRegex가 요구하는 정확한 문자열(대괄호 쌍 + 공백 1개)이어야
+    /// 새 항목으로 인식된다.
+    func insertChecklistMarker() {
+        guard let textView else { return }
+        let ns = textView.string as NSString
+        let lineStart = ns.lineRange(for: textView.selectedRange()).location
+        textView.insertText("[] ", replacementRange: NSRange(location: lineStart, length: 0))
     }
 }

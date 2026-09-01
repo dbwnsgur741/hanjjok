@@ -5,9 +5,13 @@ import Data
 
 struct PanelRootView: View {
     let model: TimelineModel
+    // [Task 24] 헤더 설정 버튼 배선 — AppDelegate가 생성 시 { [weak self] in self?.openSettings() }를
+    // 주입한다. TimelineView가 `(NSApp.delegate as? AppDelegate)?.openSettings()`처럼 직접
+    // 캐스팅하면 SwiftUI 수명주기의 NSApp.delegate가 내부 델리게이트라 항상 실패했다(실사용 버그).
+    let onOpenSettings: () -> Void
 
     var body: some View {
-        TimelineView(model: model)
+        TimelineView(model: model, onOpenSettings: onOpenSettings)
             // [v1.1] 플로팅 패널 — "벽에 붙은 판"이 아니라 "떠 있는 종이": 네 모서리를
             // 라운드로 클립하고 바깥에 그림자를 드리운다. SlidePanel 배경은 이미 clear이므로
             // 클립 밖(모서리 바깥) 영역은 그대로 투명하게 비친다.
