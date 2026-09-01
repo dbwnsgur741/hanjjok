@@ -52,7 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 배선은 SwiftUI 수명주기에서 NSApp.delegate가 내부 델리게이트라 항상 nil이 되어
         // 설정 버튼이 무반응이었다(실사용 버그) — PanelRootView에 클로저로 직접 주입한다.
         let host = NSHostingView(
-            rootView: PanelRootView(model: model, onOpenSettings: { [weak self] in self?.openSettings() }))
+            rootView: PanelRootView(
+                model: model,
+                onOpenSettings: { [weak self] in self?.openSettings() },
+                // panelController는 이 줄 다음에 할당되지만, 클로저는 Esc 시점에 지연 평가되므로 안전하다.
+                onRequestHide: { [weak self] in self?.panelController.hide() }))
         panelController = EdgePanelController(contentView: host, side: side, width: width)
         applyAppearance()
 

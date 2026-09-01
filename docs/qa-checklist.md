@@ -26,6 +26,8 @@
 - [ ] 데이터가 ~/Library/Containers/kr.hurdlers.Galpi/ 안에 생성된다
 - [ ] ⌥Space 전역 단축키가 손쉬운 접근 권한 없이 동작한다
 - [ ] Esc로 닫으면 직전 앱(Safari 등)으로 포커스가 복귀한다
+      (2026-09-01 버그: `NSApp.delegate as? AppDelegate`가 `SwiftUI.AppDelegate`를 반환해
+      항상 nil → hide() 미호출로 Esc가 무반응이었다. 클로저 주입으로 수정)
 - [ ] 전체 내보내기가 NSSavePanel로 실제 파일을 쓴다
 - [ ] 로그인 시 자동 시작 토글이 켜지고 꺼진다
 

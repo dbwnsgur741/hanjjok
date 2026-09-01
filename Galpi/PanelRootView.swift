@@ -9,6 +9,10 @@ struct PanelRootView: View {
     // 주입한다. TimelineView가 `(NSApp.delegate as? AppDelegate)?.openSettings()`처럼 직접
     // 캐스팅하면 SwiftUI 수명주기의 NSApp.delegate가 내부 델리게이트라 항상 실패했다(실사용 버그).
     let onOpenSettings: () -> Void
+    // Esc 최종 단계(패널 닫기)도 같은 이유로 주입받는다 — `NSApp.delegate as? AppDelegate`는
+    // SwiftUI 수명주기에서 `SwiftUI.AppDelegate`(동명이지만 다른 타입)를 반환해 항상 nil이 되고,
+    // `?.`가 단락되어 hide()가 조용히 호출되지 않았다(실사용 버그: Esc 무반응 + 포커스 미복귀).
+    let onRequestHide: () -> Void
 
     var body: some View {
         TimelineView(model: model, onOpenSettings: onOpenSettings)
@@ -41,7 +45,7 @@ struct PanelRootView: View {
                 } else if model.isSearching || model.activeTag != nil {
                     model.exitSearch()
                 } else {
-                    (NSApp.delegate as? AppDelegate)?.panelController.hide()
+                    onRequestHide()
                 }
             }
     }
