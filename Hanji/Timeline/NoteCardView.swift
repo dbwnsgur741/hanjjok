@@ -6,10 +6,13 @@ import Domain
 /// `contentText`는 검색 매치 구간을 jjok으로 하이라이트하는 AttributedString을 렌더링한다 (Task 13).
 /// [Task 19] 호버 시 우상단에 수정·폴더 이동·삭제 아이콘 3개가 페이드인한다(기존 더블클릭/
 /// 우클릭 경로는 그대로 유지 — 중복 진입 허용).
-/// [Task 22] `ChecklistParser.items`가 비어 있지 않으면 `contentText` 대신 `checklistBody`를
-/// 줄 단위로 렌더링한다 — 이 경로는 검색 매치 하이라이트를 생략한다(Ruling: 카드 자체가
-/// 검색 결과로 필터링되므로 손실 최소). 인라인 수정 모드는 항상 원문 마커가 보이는
-/// 순수 텍스트(ComposerTextView)로, 체크리스트 여부와 무관하게 그대로 유지한다.
+/// [QA r5-B] 평상시 렌더는 `MarkdownBody`(제목·구분선·불릿·인용·체크리스트·인라인 서식이
+/// 마커 없는 완성형으로 보임)로 통일한다 — 예전엔 체크리스트가 있을 때만 줄 단위 렌더
+/// (`checklistBody`, Task 22)로 빠졌고 그 밖의 마크다운(`**굵게**`, `---` 등)은 평문 그대로
+/// 보였다(사용자 피드백). 다만 검색 중(`model.currentSearchText != nil`)에는 매치 하이라이트가
+/// 있는 `contentText`(평문)를 그대로 쓴다 — MarkdownBody는 하이라이트 구간을 모른다(Ruling,
+/// 기존 "체크리스트 경로는 하이라이트 생략" 규칙을 이걸로 대체). 인라인 수정 모드는 항상
+/// 원문 마커가 보이는 순수 텍스트(ComposerTextView)로, 마크다운 유무와 무관하게 그대로 유지한다.
 struct NoteCardView: View {
     let note: Note
     let model: TimelineModel
@@ -52,10 +55,12 @@ struct NoteCardView: View {
                     // 상위(패널)로 이벤트가 전파되지 않는다. editingNoteID를 nil로 되돌리면
                     // isEditing이 파생 프로퍼티라 자동으로 false가 된다(QA r3).
                     .onExitCommand { model.editingNoteID = nil }
-            } else if checklistItems.isEmpty {
+            } else if model.currentSearchText != nil {
                 contentText
             } else {
-                checklistBody
+                MarkdownBody(content: note.content) { item in
+                    Task { await model.update(note, content: ChecklistParser.toggling(note.content, at: item)) }
+                }
             }
 
             HStack(spacing: 6) {
@@ -189,106 +194,9 @@ struct NoteCardView: View {
         return attr
     }
 
-    /// note.content에 체크리스트 항목이 하나라도 있으면 `checklistBody` 경로가 활성화된다.
-    private var checklistItems: [ChecklistItem] {
-        ChecklistParser.items(in: note.content)
-    }
-
+    /// 카드 푸터 진행률(n/m) — MarkdownBody가 체크리스트 렌더를 맡은 뒤에도 그대로 유지한다.
     private var checklistProgress: (checked: Int, total: Int) {
         ChecklistParser.progress(in: note.content)
-    }
-
-    /// `checklistBody` 렌더링 단위 — 체크리스트 항목 줄과 일반 줄을 순서대로 섞어 보관한다.
-    private struct ChecklistLine: Identifiable {
-        let id: Int
-        let text: Substring
-        let item: ChecklistItem?
-    }
-
-    /// note.content를 `\n` 기준으로 쪼개 Character 오프셋을 추적하며, `checklistItems`의
-    /// lineRange와 정확히 일치하는 줄만 체크리스트 항목으로 표시한다(ChecklistParser와
-    /// 동일한 분할 규칙 — split(separator: "\n", omittingEmptySubsequences: false)).
-    private var checklistLines: [ChecklistLine] {
-        let items = checklistItems
-        var result: [ChecklistLine] = []
-        var offset = 0
-        var itemIndex = 0
-        for (index, line) in note.content.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-            let range = offset..<(offset + line.count)
-            var matched: ChecklistItem? = nil
-            if itemIndex < items.count, items[itemIndex].lineRange == range {
-                matched = items[itemIndex]
-                itemIndex += 1
-            }
-            result.append(ChecklistLine(id: index, text: line, item: matched))
-            offset += line.count + 1  // "\n" 몫
-        }
-        return result
-    }
-
-    /// 체크리스트 본문 — 항목 줄은 체크박스+본문 HStack, 일반 줄은 기존과 같은 plain Text.
-    /// 검색 매치 하이라이트는 이 경로에서 생략한다(Ruling, 클래스 상단 주석 참조).
-    private var checklistBody: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(checklistLines) { line in
-                if let item = line.item {
-                    checklistRow(item)
-                } else {
-                    Text(String(line.text))
-                        .font(HanjiTheme.bodyFont())
-                        .lineSpacing((HanjiTheme.bodyLineHeightMultiple - 1) * 15)
-                        .textSelection(.enabled)
-                }
-            }
-        }
-    }
-
-    /// 체크리스트 항목 한 줄 — 체크박스(15pt, 라운드 사각형) + 본문. 완료 항목은 취소선 +
-    /// inkSoft로 흐리게, 미완료 항목은 일반 본문과 같은 색(환경 기본 ink). QA r2에서 SF
-    /// Symbol(square/checkmark.square.fill)로 바꿨지만 "여전히 배열같이 보인다"는 지적
-    /// (QA r3 ①) — SF 심볼을 버리고 커스텀 드로잉으로 교체: 미완료는 사각 inkSoft 1.5pt
-    /// 외곽선(속 투명), 완료는 jjok 채움 위에 백색 굵은 체크마크. 버튼 라벨에 20x20 히트
-    /// 영역을 명시해 시각 크기(15pt)보다 넉넉한 클릭 영역을 보장한다.
-    /// [QA r3 Fix round 1] `.firstTextBaseline`은 텍스트가 아닌 뷰(ZStack)에는 실제
-    /// 베이스라인이 없어 SwiftUI가 그 뷰의 "바닥 모서리"를 베이스라인 대용으로 쓴다 — 그
-    /// 결과 20×20 히트 프레임의 바닥이 본문 첫 줄 베이스라인에 맞춰지면서, 그 안의 15×15
-    /// 체크박스가 시각적으로 첫 줄보다 한참 위로 떠 보였다(리뷰 지적). `.top` 정렬로 바꾸고
-    /// 체크박스에 `.padding(.top, 2.5)`를 얹어 광학 보정한다: 15pt MaruBuri의 어센트가
-    /// 약 11~12pt이므로, 박스 상단을 2.5pt만큼 내리면 15pt 박스의 중심이 대략 첫 줄의
-    /// x-height 중간선 부근에 오도록 맞춰진다.
-    private func checklistRow(_ item: ChecklistItem) -> some View {
-        HStack(alignment: .top, spacing: 7) {
-            Button {
-                Task { await model.update(note, content: ChecklistParser.toggling(note.content, at: item)) }
-            } label: {
-                ZStack {
-                    // 미완료: 사각 inkSoft 1.5pt 외곽선, 속 투명 (QA r3 ①).
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(inkSoft.opacity(0.8), lineWidth: 1.5)
-                        .opacity(item.isChecked ? 0 : 1)
-                    // 완료: jjok 채움 + 백색 체크(checkmark 심볼 9pt bold 백색).
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(jjok)
-                        .opacity(item.isChecked ? 1 : 0)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.white)
-                        .opacity(item.isChecked ? 1 : 0)
-                }
-                .frame(width: 15, height: 15)
-                .frame(width: 20, height: 20)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 2.5)
-
-            Text(item.text)
-                .font(HanjiTheme.bodyFont())
-                .lineSpacing((HanjiTheme.bodyLineHeightMultiple - 1) * 15)
-                .strikethrough(item.isChecked)
-                .foregroundStyle(item.isChecked ? inkSoft : ink)
-                .textSelection(.enabled)
-        }
     }
 
     private func tagChip(_ tag: String) -> some View {
