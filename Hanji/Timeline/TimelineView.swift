@@ -139,11 +139,14 @@ struct TimelineView: View {
             ZStack(alignment: .topLeading) {
                 if model.draft.isEmpty {
                     // ComposerTextView의 textContainerInset(멀티라인: width 12 · height 10)과
-                    // 정렬을 맞춰 타이핑된 첫 글자 자리와 겹치도록 한다.
+                    // 정렬을 맞춰 타이핑된 첫 글자 자리와 겹치도록 한다. leading은 12(인셋)+
+                    // 5(NSTextContainer 기본 lineFragmentPadding, ComposerTextView가 건드리지
+                    // 않는 값)만큼 보정한 17 — 그렇지 않으면 플레이스홀더가 실제 타이핑 위치보다
+                    // 5pt 왼쪽에 떠 보인다 (리뷰 지적, Fix round 1).
                     Text("새 메모…")
                         .font(HanjiTheme.bodyFont())
                         .foregroundStyle(inkSoft)
-                        .padding(.leading, 12)
+                        .padding(.leading, 17)
                         .padding(.top, 10)
                         .allowsHitTesting(false)
                 }
