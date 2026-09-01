@@ -69,17 +69,33 @@ struct NoteCardView: View {
     /// 호버 시 우상단에 페이드인하는 아이콘 3개 — 수정 연필·폴더 이동·삭제 휴지통.
     /// 수정 모드 중에는 (기존 인라인 편집 UI와 겹치지 않도록) 숨긴다. 페이드는
     /// HanjiTheme.motion을 거쳐 ≤200ms로 애니메이션되며, '동작 줄이기' 활성 시 즉시 전환된다.
+    /// card 톤 배경(hoverActionsBackground)이 없으면 본문 텍스트 위에 아이콘이 그대로
+    /// 얹혀 우측 끝 텍스트와 겹치고 휴지통을 오클릭할 위험이 있다(리뷰 지적) — 그래서
+    /// 아이콘 행을 "텍스트 위에 떠 있는 작은 컨트롤"로 읽히게 배경을 준다.
     private var hoverActionsRow: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             HoverIconButton(systemName: "pencil", inkSoft: inkSoft, ink: ink, action: beginEditing)
             HoverFolderMenuButton(inkSoft: inkSoft, ink: ink) { moveMenuItems }
             HoverIconButton(systemName: "trash", inkSoft: inkSoft, ink: ink) {
                 Task { await model.delete(note) }
             }
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(hoverActionsBackground)
         .padding(6)
         .opacity(isHovering && !isEditing ? 1 : 0)
         .allowsHitTesting(isHovering && !isEditing)
+    }
+
+    /// 호버 아이콘 배경 — card 톤 RoundedRectangle(카드 반경과 동일한 6) + 카드 그림자보다
+    /// 약한 그림자 한 겹(반경·알파를 cardBackground의 1차 그림자보다 낮춤).
+    private var hoverActionsBackground: some View {
+        RoundedRectangle(cornerRadius: HanjiTheme.cardRadius)
+            .fill(card)
+            .shadow(
+                color: (isDark ? HanjiTheme.cardShadow1Dark : HanjiTheme.cardShadow1Light).opacity(0.6),
+                radius: isDark ? 1.2 : 1, y: 0.5)
     }
 
     /// 호버 아이콘의 폴더 메뉴와 우클릭 메뉴의 "폴더로 이동" 서브메뉴가 공유하는 항목 —
