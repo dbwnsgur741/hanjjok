@@ -1,8 +1,8 @@
-# Hanji (한지) — 설계 문서
+# 갈피 (Galpi) — 설계 문서
 
 - 날짜: 2026-08-31
 - 상태: 사용자 검토 대기
-- 코드명: side-notes / 제품명: **Hanji (한지)**
+- 코드명: side-notes / 제품명: **갈피 (Galpi)** — v1.4에서 Hanji(한지)로부터 변경
 
 ## 1. 개요와 목표
 
@@ -32,7 +32,7 @@ SideNotes(Apptorium)의 엣지 패널 인터랙션을 원형으로 하되, 한�
 체크리스트 항목으로 렌더링되고 카드에서 클릭해 완료를 토글한다. 별도 투두 엔티티·화면
 없음 — 메모 한 장이 곧 투두리스트가 된다.
 
-이 카테고리 성공작의 공통점은 "무엇을 안 하는지"의 명확함이다. Hanji가 안 하는 것:
+이 카테고리 성공작의 공통점은 "무엇을 안 하는지"의 명확함이다. 갈피가 안 하는 것:
 
 - 폴더 계층(폴더 안 폴더) — 1단계 평면까지만
 - 제목 있는 문서형 노트
@@ -46,7 +46,9 @@ SideNotes(Apptorium)의 엣지 패널 인터랙션을 원형으로 하되, 한�
 | 정책 | 결정 |
 |---|---|
 | 저장 기술 | GRDB (SQLite), 단일 파일, WAL 모드 |
-| 저장 위치 | `~/Library/Application Support/Hanji/hanji.sqlite` |
+| 저장 위치 **[v1.4]** | 샌드박스 컨테이너 `~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application Support/Galpi/galpi.sqlite`. 샌드박스가 `.applicationSupportDirectory`를 자동 리다이렉트하므로 코드는 경로를 직접 알지 않는다 |
+| 제품명 **[v1.4]** | **갈피 (Galpi)** — 2026-09-01 변경. 구 Hanji(한지). 사유: hanji.kr 및 .kr 계열 전 선점, 일반명사라 상표 식별력 부족, Play스토어 동명 앱 존재. 도메인 galpi.com / galpi.app. **비주얼 아이덴티티(한지 질감·먹빛·쪽빛·마루부리)는 그대로 유지** — 갈피도 종이에 끼우는 물건이라 컨셉이 깨지지 않는다 |
+| 배포 **[v1.4]** | Mac App Store **무료** 배포. App Sandbox 필수(`com.apple.security.app-sandbox`), 번들 ID `kr.hurdlers.Galpi`는 App Store Connect 레코드 생성 후 영구 고정. 유료화는 반응 검증 후 "갈피 Plus" $5 IAP로 iCloud 동기화·iOS 앱을 잠금 해제하는 방식 |
 | 백업 | 앱 시작 시 24h 경과하면 스냅샷, 최근 7개 보관 (`Backups/`) |
 | 호출 방식 | 메뉴바 아이콘 클릭 + 글로벌 단축키 (기본 ⌥Space, 변경 가능). 핫 엣지는 MVP 제외 |
 | 실행 형태 | Dock 아이콘 없는 메뉴바 상주 앱 (LSUIElement), 로그인 시 자동 시작 옵션 |
@@ -72,8 +74,8 @@ SPM 로컬 패키지로 레이어를 물리 분리. 의존 방향은 항상 안�
 
 ```
 side-notes/
-├── Hanji.xcodeproj
-├── Hanji/                   # App 타깃: SwiftUI 뷰, @Observable 뷰모델, 에셋
+├── Galpi.xcodeproj
+├── Galpi/                   # App 타깃: SwiftUI 뷰, @Observable 뷰모델, 에셋
 ├── Packages/
 │   ├── Domain/              # 순수 Swift. 프레임워크 import 금지
 │   ├── Data/                # GRDB 구현체 (Domain의 Repository protocol 구현)
@@ -222,6 +224,10 @@ side-notes/
 ## 11. 미해결 항목 (구현 중 결정)
 
 - 글로벌 단축키 기본값 ⌥Space의 타 앱 충돌 검증 (충돌 시 대안 선정)
-- 한지 질감 타일 에셋 제작·수급
-- 앱 아이콘 디자인
-- 앱 이름 표기: 메뉴바·정식 표기에서 "Hanji" / "한지" 병용 규칙
+- ~~한지 질감 타일 에셋 제작·수급~~ → 완료 (`Resources/Textures/GalpiGrain.png`)
+- 앱 아이콘 디자인 — **App Store 제출 필수. 갈피로 브랜드가 바뀌었으므로 붓 모티프가 아니라
+  책갈피 모티프로 간다.** 색은 §8 그대로(한지 미색 바탕·먹빛 획·쪽빛 갈피 끈)
+- ~~앱 이름 표기: "Hanji" / "한지" 병용 규칙~~ → 해소. **표기는 "갈피" 단일**
+  (영문 표기가 필요한 자리에서만 "Galpi"). 코드 심볼은 `Galpi*` 접두
+- **[v1.4 신규]** 메뉴바 아이콘 모티프 — 현재 SF Symbol `paintbrush.pointed`(붓)이다.
+  브랜드가 갈피로 바뀌었으므로 책갈피 계열로 교체할지 결정 필요. 앱 아이콘과 함께 정한다
