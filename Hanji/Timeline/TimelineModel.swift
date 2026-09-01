@@ -37,10 +37,15 @@ final class TimelineModel {
     /// AND 결합해 지원).
     var folderFilter: FolderFilter = .all {
         didSet {
-            guard folderFilter != oldValue else { return }
+            guard folderFilter != oldValue, !suppressFilterReload else { return }
             Task { [weak self] in await self?.applyFolderFilterChange() }
         }
     }
+    /// deleteFolder(_:)가 folderFilter를 내부적으로 .all로 되돌릴 때만 켜는 억제 플래그.
+    /// 그 경로는 뒤이어 자신의 단일 재로드(load() + 필요 시 scheduleSearch())를 직접
+    /// 수행하므로, 억제하지 않으면 didSet이 띄우는 또 다른 재로드 Task와 경쟁하며
+    /// timeline(.all) 조회가 중복 실행된다(리뷰 지적 — Task 18 fix).
+    private var suppressFilterReload = false
     var folders: [Folder] = []
     var counts: FolderCounts?
     var tagCounts: [TagCount] = []
@@ -193,11 +198,17 @@ final class TimelineModel {
     func deleteFolder(_ folder: Folder) async {
         do {
             try await repo.deleteFolder(id: folder.id)
-            // 삭제된 폴더를 보고 있었다면 전체 스코프로 되돌린다(didSet이 타임라인을 재로드한다).
+            // 삭제된 폴더를 보고 있었다면 전체 스코프로 되돌린다. 이 대입이 didSet의 자동
+            // 재로드 Task를 또 띄우지 않도록 suppressFilterReload로 억제하고, 아래 단일
+            // 경로(load() + 필요 시 scheduleSearch())만이 유일한 재로드가 되게 한다 —
+            // 그렇지 않으면 동일한 timeline(.all) 조회가 두 번(경쟁 상태로) 실행된다.
             if case .folder(let id) = folderFilter, id == folder.id {
+                suppressFilterReload = true
                 folderFilter = .all
+                suppressFilterReload = false
             }
             await load()
+            if isSearching || activeTag != nil { scheduleSearch() }
         } catch {
             log.error("폴더 삭제 실패: \(error)")
         }
