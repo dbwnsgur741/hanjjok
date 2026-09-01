@@ -6,6 +6,10 @@ import Domain
 /// `contentText`는 검색 매치 구간을 jjok으로 하이라이트하는 AttributedString을 렌더링한다 (Task 13).
 /// [Task 19] 호버 시 우상단에 수정·폴더 이동·삭제 아이콘 3개가 페이드인한다(기존 더블클릭/
 /// 우클릭 경로는 그대로 유지 — 중복 진입 허용).
+/// [Task 22] `ChecklistParser.items`가 비어 있지 않으면 `contentText` 대신 `checklistBody`를
+/// 줄 단위로 렌더링한다 — 이 경로는 검색 매치 하이라이트를 생략한다(Ruling: 카드 자체가
+/// 검색 결과로 필터링되므로 손실 최소). 인라인 수정 모드는 항상 원문 마커가 보이는
+/// 순수 텍스트(ComposerTextView)로, 체크리스트 여부와 무관하게 그대로 유지한다.
 struct NoteCardView: View {
     let note: Note
     let model: TimelineModel
@@ -34,8 +38,10 @@ struct NoteCardView: View {
                     // onExitCommand는 cancelOperation: 을 responder 체인에서 이 뷰가 소비하도록 하므로
                     // 상위(패널)로 이벤트가 전파되지 않는다.
                     .onExitCommand { isEditing = false }
-            } else {
+            } else if checklistItems.isEmpty {
                 contentText
+            } else {
+                checklistBody
             }
 
             HStack(spacing: 6) {
@@ -43,6 +49,15 @@ struct NoteCardView: View {
                     tagChip(tag)
                 }
                 Spacer(minLength: 0)
+                if checklistProgress.total > 0 {
+                    Text("\(checklistProgress.checked)/\(checklistProgress.total)")
+                        .font(HanjiTheme.uiFont(size: 10.5))
+                        .foregroundStyle(inkSoft)
+                        .monospacedDigit()
+                    Text("·")
+                        .font(HanjiTheme.uiFont(size: 10.5))
+                        .foregroundStyle(inkSoft)
+                }
                 Text(note.createdAt.formatted(date: .omitted, time: .shortened))
                     .font(HanjiTheme.uiFont(size: 10.5))
                     .foregroundStyle(inkSoft)
@@ -143,6 +158,82 @@ struct NoteCardView: View {
         attr[lower..<upper].backgroundColor = jjokWash
         attr[lower..<upper].foregroundColor = jjok
         return attr
+    }
+
+    /// note.content에 체크리스트 항목이 하나라도 있으면 `checklistBody` 경로가 활성화된다.
+    private var checklistItems: [ChecklistItem] {
+        ChecklistParser.items(in: note.content)
+    }
+
+    private var checklistProgress: (checked: Int, total: Int) {
+        ChecklistParser.progress(in: note.content)
+    }
+
+    /// `checklistBody` 렌더링 단위 — 체크리스트 항목 줄과 일반 줄을 순서대로 섞어 보관한다.
+    private struct ChecklistLine: Identifiable {
+        let id: Int
+        let text: Substring
+        let item: ChecklistItem?
+    }
+
+    /// note.content를 `\n` 기준으로 쪼개 Character 오프셋을 추적하며, `checklistItems`의
+    /// lineRange와 정확히 일치하는 줄만 체크리스트 항목으로 표시한다(ChecklistParser와
+    /// 동일한 분할 규칙 — split(separator: "\n", omittingEmptySubsequences: false)).
+    private var checklistLines: [ChecklistLine] {
+        let items = checklistItems
+        var result: [ChecklistLine] = []
+        var offset = 0
+        var itemIndex = 0
+        for (index, line) in note.content.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let range = offset..<(offset + line.count)
+            var matched: ChecklistItem? = nil
+            if itemIndex < items.count, items[itemIndex].lineRange == range {
+                matched = items[itemIndex]
+                itemIndex += 1
+            }
+            result.append(ChecklistLine(id: index, text: line, item: matched))
+            offset += line.count + 1  // "\n" 몫
+        }
+        return result
+    }
+
+    /// 체크리스트 본문 — 항목 줄은 체크박스+본문 HStack, 일반 줄은 기존과 같은 plain Text.
+    /// 검색 매치 하이라이트는 이 경로에서 생략한다(Ruling, 클래스 상단 주석 참조).
+    private var checklistBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(checklistLines) { line in
+                if let item = line.item {
+                    checklistRow(item)
+                } else {
+                    Text(String(line.text))
+                        .font(HanjiTheme.bodyFont())
+                        .lineSpacing((HanjiTheme.bodyLineHeightMultiple - 1) * 15)
+                        .textSelection(.enabled)
+                }
+            }
+        }
+    }
+
+    /// 체크리스트 항목 한 줄 — 체크박스(11.5pt, unchecked=inkSoft·checked=jjok) + 본문.
+    /// 완료 항목은 취소선 + inkSoft로 흐리게, 미완료 항목은 일반 본문과 같은 색(환경 기본 ink).
+    private func checklistRow(_ item: ChecklistItem) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Button {
+                Task { await model.update(note, content: ChecklistParser.toggling(note.content, at: item)) }
+            } label: {
+                Image(systemName: item.isChecked ? "checkmark.square" : "square")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(item.isChecked ? jjok : inkSoft)
+            }
+            .buttonStyle(.plain)
+
+            Text(item.text)
+                .font(HanjiTheme.bodyFont())
+                .lineSpacing((HanjiTheme.bodyLineHeightMultiple - 1) * 15)
+                .strikethrough(item.isChecked)
+                .foregroundStyle(item.isChecked ? inkSoft : ink)
+                .textSelection(.enabled)
+        }
     }
 
     private func tagChip(_ tag: String) -> some View {
