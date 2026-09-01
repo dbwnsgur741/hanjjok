@@ -127,6 +127,43 @@ final class TimelineModel {
         }
     }
 
+    // MARK: - 폴더 이동 (Task 19)
+
+    /// 호버 아이콘·컨텍스트 메뉴의 "폴더로 이동" — note.folderId를 갱신해 저장하고,
+    /// 현재 보고 있는 폴더 스코프(folderFilter)에서 벗어나면 목록(notes/searchResults)에서
+    /// 제거한다. 폴더별 카운트(counts)는 여기서 갱신하지 않는다 — 다음 드로어 오픈 시
+    /// isDrawerOpen didSet이 loadFolderData()로 재로드하는 것으로 충분하다 (Task 18).
+    func move(note: Note, to folderId: UUID?) async {
+        var updated = note
+        updated.folderId = folderId
+        do {
+            try await repo.save(updated)
+            applyMoveResult(updated)
+        } catch {
+            log.error("폴더 이동 실패: \(error)")
+        }
+    }
+
+    private func applyMoveResult(_ updated: Note) {
+        let stillMatches = matchesFolderFilter(updated.folderId)
+        if let i = notes.firstIndex(where: { $0.id == updated.id }) {
+            if stillMatches { notes[i] = updated }
+            else { HanjiTheme.motion { notes.remove(at: i) } }
+        }
+        if let i = searchResults.firstIndex(where: { $0.id == updated.id }) {
+            if stillMatches { searchResults[i] = updated }
+            else { HanjiTheme.motion { searchResults.remove(at: i) } }
+        }
+    }
+
+    private func matchesFolderFilter(_ folderId: UUID?) -> Bool {
+        switch folderFilter {
+        case .all: return true
+        case .unfiled: return folderId == nil
+        case .folder(let id): return folderId == id
+        }
+    }
+
     // MARK: - 검색 (Task 13)
 
     /// 태그 칩 클릭 시 호출 — 해당 태그로 필터링하며 라이브 검색을 트리거한다.
