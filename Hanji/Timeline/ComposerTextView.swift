@@ -50,9 +50,14 @@ struct ComposerTextView: NSViewRepresentable {
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
-        // [QA r5-C] 라이브 문법 강조 — Coordinator가 NSTextStorageDelegate를 겸한다.
-        textView.textStorage?.delegate = context.coordinator
-        context.coordinator.textView = textView
+        // [QA r5-C Fix round 1] 라이브 문법 강조는 다중행 컴포저에만 배선한다 —
+        // singleLine(드로어 이름 필드 등)에 배선하면 폴더명으로 "- 아이디어"나 "# Ideas"를
+        // 쳤을 때 그 일부가 흐려 보인다(리뷰 지적, 스펙 위반: singleLine은 강조 대상이
+        // 아님). delegate 자체를 안 달아 didProcessEditing이 아예 호출되지 않게 한다.
+        if !singleLine {
+            textView.textStorage?.delegate = context.coordinator
+            context.coordinator.textView = textView
+        }
         return scroll
     }
 
@@ -68,7 +73,20 @@ struct ComposerTextView: NSViewRepresentable {
             if textView.hasMarkedText() { textView.unmarkText() }
             textView.string = text
         }
-        textView.font = font
+        // [QA r5-C Fix round 1] font를 무조건 재대입하면 안 된다 — isRichText가 false라
+        // NSTextView.font 세터는 문서 전체를 그 폰트 하나로 통일된 속성으로 다시 씌운다
+        // (리뷰 실증: addAttribute로 얹은 굵게가 같은 값을 재대입해도 사라짐). updateNSView는
+        // 키 입력마다(textDidChange → binding → SwiftUI 재렌더) 불리므로 무조건 대입하면
+        // 라이브 강조(제목 크기·굵게·기울임·코드)가 매 키 입력마다 통째로 지워진다 —
+        // 실제로 값이 바뀔 때만 대입한다. 본문 폰트 설정을 MaruBuri↔Pretendard로 토글할
+        // 때는 font가 실제로 달라지므로 이 분기가 정상적으로 실행돼 문서 전체가 새
+        // 폰트로 리셋된다(의도된 동작).
+        if textView.font != font {
+            textView.font = font
+        }
+        // 새로 입력될 글자가 강조 재적용 전까지 기본 폰트로 시작하도록 typingAttributes도
+        // 맞춰 둔다.
+        textView.typingAttributes[.font] = font
         context.coordinator.reportHeight(from: textView)
     }
 
@@ -103,6 +121,10 @@ struct ComposerTextView: NSViewRepresentable {
                           didProcessEditing editedMask: NSTextStorageEditActions,
                           range editedRange: NSRange,
                           changeInLength delta: Int) {
+            // [QA r5-C Fix round 1] singleLine(드로어 이름 필드 등)은 강조 대상이 아니다 —
+            // makeNSView가 이미 이 경우 delegate 자체를 안 달지만, 방어적으로 한 번 더
+            // 막는다(스펙 위반 재발 방지).
+            guard !parent.singleLine else { return }
             guard editedMask.contains(.editedCharacters) else { return }
             guard let tv = textView, !tv.hasMarkedText() else { return }
             let isDark = tv.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
@@ -218,7 +240,10 @@ final class ComposerCommands {
         let ns = textView.string as NSString
         let lineRange = ns.lineRange(for: textView.selectedRange())
         var body = ns.substring(with: lineRange)
-        let knownPrefixes = ["- [ ] ", "### ", "## ", "# ", "- ", "> "]
+        // [QA r5-C Fix round 1] 체크된 항목("- [x] "/"- [X] ")도 "- "보다 먼저 매치돼야
+        // 한다 — 빠뜨리면 이미 체크된 줄에서 체크리스트 버튼을 눌렀을 때 "- "만 벗겨져
+        // "- [ ] [x] Task"처럼 마커가 중첩되는 사고가 난다.
+        let knownPrefixes = ["- [ ] ", "- [x] ", "- [X] ", "### ", "## ", "# ", "- ", "> "]
         var existing: String?
         for candidate in knownPrefixes where body.hasPrefix(candidate) {
             existing = candidate
