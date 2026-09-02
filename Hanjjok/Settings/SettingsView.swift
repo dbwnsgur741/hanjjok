@@ -5,7 +5,7 @@ import PanelKit
 
 /// 설정 창. `panelSide`/`panelWidth`/`usePretendardBody`는 UserDefaults(@AppStorage)에
 /// 직접 기록되고, AppDelegate가 UserDefaults.didChangeNotification을 구독해 패널에
-/// 즉시 반영한다 (GalpiApp.swift 참고). 본문 글꼴은 TimelineView의 @AppStorage 관찰로
+/// 즉시 반영한다 (HanjjokApp.swift 참고). 본문 글꼴은 TimelineView의 @AppStorage 관찰로
 /// 이미 열려 있는 패널에도 바로 반영된다.
 struct SettingsView: View {
     @AppStorage("panelSide") private var panelSide = PanelSide.right.rawValue

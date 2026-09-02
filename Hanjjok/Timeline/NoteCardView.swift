@@ -31,18 +31,18 @@ struct NoteCardView: View {
     @State private var isHovering = false
 
     private var isDark: Bool { scheme == .dark }
-    private var card: Color { isDark ? GalpiTheme.cardDark : GalpiTheme.cardLight }
-    private var ink: Color { isDark ? GalpiTheme.inkDark : GalpiTheme.inkLight }
-    private var inkSoft: Color { isDark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
-    private var jjok: Color { isDark ? GalpiTheme.jjokDark : GalpiTheme.jjokLight }
-    private var jjokWash: Color { isDark ? GalpiTheme.jjokWashDark : GalpiTheme.jjokWashLight }
+    private var card: Color { isDark ? HanjjokTheme.cardDark : HanjjokTheme.cardLight }
+    private var ink: Color { isDark ? HanjjokTheme.inkDark : HanjjokTheme.inkLight }
+    private var inkSoft: Color { isDark ? HanjjokTheme.inkSoftDark : HanjjokTheme.inkSoftLight }
+    private var jjok: Color { isDark ? HanjjokTheme.jjokDark : HanjjokTheme.jjokLight }
+    private var jjokWash: Color { isDark ? HanjjokTheme.jjokWashDark : HanjjokTheme.jjokWashLight }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if isEditing {
                 ComposerTextView(
                     text: $editText,
-                    font: GalpiTheme.bodyNSFont(),
+                    font: HanjjokTheme.bodyNSFont(),
                     onSubmit: { commitEdit() },
                     // [QA r3 ③] 수정 중 다른 곳을 클릭해 포커스를 잃으면 커밋한다 — 예전엔
                     // 포커스 아웃 커밋 경로 자체가 없어 변경 내용이 저장되지 않았다.
@@ -70,20 +70,20 @@ struct NoteCardView: View {
                 Spacer(minLength: 0)
                 if checklistProgress.total > 0 {
                     Text("\(checklistProgress.checked)/\(checklistProgress.total)")
-                        .font(GalpiTheme.uiFont(size: 10.5))
+                        .font(HanjjokTheme.uiFont(size: 10.5))
                         .foregroundStyle(inkSoft)
                         .monospacedDigit()
                     Text("·")
-                        .font(GalpiTheme.uiFont(size: 10.5))
+                        .font(HanjjokTheme.uiFont(size: 10.5))
                         .foregroundStyle(inkSoft)
                 }
                 Text(timestampLabel)
-                    .font(GalpiTheme.uiFont(size: 10.5))
+                    .font(HanjjokTheme.uiFont(size: 10.5))
                     .foregroundStyle(inkSoft)
             }
         }
-        .padding(.vertical, GalpiTheme.cardPaddingV)
-        .padding(.horizontal, GalpiTheme.cardPaddingH)
+        .padding(.vertical, HanjjokTheme.cardPaddingV)
+        .padding(.horizontal, HanjjokTheme.cardPaddingH)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
         .overlay(alignment: .topTrailing) { hoverActionsRow }
@@ -96,13 +96,13 @@ struct NoteCardView: View {
         }
         .onTapGesture(count: 2) { beginEditing() }
         .onHover { hovering in
-            GalpiTheme.motion { isHovering = hovering }
+            HanjjokTheme.motion { isHovering = hovering }
         }
     }
 
     /// 호버 시 우상단에 페이드인하는 아이콘 3개 — 수정 연필·폴더 이동·삭제 휴지통.
     /// 수정 모드 중에는 (기존 인라인 편집 UI와 겹치지 않도록) 숨긴다. 페이드는
-    /// GalpiTheme.motion을 거쳐 ≤200ms로 애니메이션되며, '동작 줄이기' 활성 시 즉시 전환된다.
+    /// HanjjokTheme.motion을 거쳐 ≤200ms로 애니메이션되며, '동작 줄이기' 활성 시 즉시 전환된다.
     /// card 톤 배경(hoverActionsBackground)이 없으면 본문 텍스트 위에 아이콘이 그대로
     /// 얹혀 우측 끝 텍스트와 겹치고 휴지통을 오클릭할 위험이 있다(리뷰 지적) — 그래서
     /// 아이콘 행을 "텍스트 위에 떠 있는 작은 컨트롤"로 읽히게 배경을 준다.
@@ -125,10 +125,10 @@ struct NoteCardView: View {
     /// 호버 아이콘 배경 — card 톤 RoundedRectangle(카드 반경과 동일한 6) + 카드 그림자보다
     /// 약한 그림자 한 겹(반경·알파를 cardBackground의 1차 그림자보다 낮춤).
     private var hoverActionsBackground: some View {
-        RoundedRectangle(cornerRadius: GalpiTheme.cardRadius)
+        RoundedRectangle(cornerRadius: HanjjokTheme.cardRadius)
             .fill(card)
             .shadow(
-                color: (isDark ? GalpiTheme.cardShadow1Dark : GalpiTheme.cardShadow1Light).opacity(0.6),
+                color: (isDark ? HanjjokTheme.cardShadow1Dark : HanjjokTheme.cardShadow1Light).opacity(0.6),
                 radius: isDark ? 1.2 : 1, y: 0.5)
     }
 
@@ -176,8 +176,8 @@ struct NoteCardView: View {
     /// 본문 렌더링 — 검색 매치 구간을 jjok 바탕·전경으로 하이라이트한다 (tokens.md "매치 · 본문").
     private var contentText: some View {
         Text(highlighted(note.content))
-            .font(GalpiTheme.bodyFont())
-            .lineSpacing((GalpiTheme.bodyLineHeightMultiple - 1) * 15)
+            .font(HanjjokTheme.bodyFont())
+            .lineSpacing((HanjjokTheme.bodyLineHeightMultiple - 1) * 15)
             .textSelection(.enabled)
     }
 
@@ -200,12 +200,12 @@ struct NoteCardView: View {
     }
 
     private func tagChip(_ tag: String) -> some View {
-        let color = GalpiTheme.tagColor(tag, dark: isDark)
+        let color = HanjjokTheme.tagColor(tag, dark: isDark)
         return Text("#\(tag)")
-            .font(GalpiTheme.uiFont(size: 12.5, weight: .semibold))
+            .font(HanjjokTheme.uiFont(size: 12.5, weight: .semibold))
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(GalpiTheme.tagChipAlpha)))
+            .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(HanjjokTheme.tagChipAlpha)))
             .overlay(
                 RoundedRectangle(cornerRadius: 3)
                     .strokeBorder(jjok, lineWidth: tagMatchesQuery(tag) ? 1 : 0)
@@ -227,13 +227,13 @@ struct NoteCardView: View {
 
     /// tokens.md 카드 그림자 — 이중 레이어(주 그림자 + 밀착 윤곽 그림자)를 라이트/다크로 분기.
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: GalpiTheme.cardRadius)
+        RoundedRectangle(cornerRadius: HanjjokTheme.cardRadius)
             .fill(card)
             .shadow(
-                color: isDark ? GalpiTheme.cardShadow1Dark : GalpiTheme.cardShadow1Light,
+                color: isDark ? HanjjokTheme.cardShadow1Dark : HanjjokTheme.cardShadow1Light,
                 radius: isDark ? 2 : 1.5, y: 1)
             .shadow(
-                color: isDark ? GalpiTheme.cardShadow2Dark : GalpiTheme.cardShadow2Light,
+                color: isDark ? HanjjokTheme.cardShadow2Dark : HanjjokTheme.cardShadow2Light,
                 radius: 0.5, y: 0)
     }
 

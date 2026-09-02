@@ -3,7 +3,7 @@ import AppKit
 import Domain
 import os
 
-private let timelineLog = Logger(subsystem: "kr.hurdlers.Galpi", category: "timeline")
+private let timelineLog = Logger(subsystem: "kr.hurdlers.Hanjjok", category: "timeline")
 
 struct TimelineView: View {
     @Bindable var model: TimelineModel
@@ -24,28 +24,28 @@ struct TimelineView: View {
     // 설정 창에서 본문 글꼴 토글 시 이 패널(생성 후 재사용되는 단일 인스턴스)이 즉시 새로
     // 반영하도록 하는 배선 — @AppStorage는 body 안에서 값을 직접 읽지 않아도 해당
     // UserDefaults 키가 바뀔 때마다 SwiftUI가 이 뷰의 body를 다시 계산하게 만든다.
-    // 그러면 하위 NoteCardView.contentText/ComposerTextView가 GalpiTheme.bodyFont(NSFont)를
+    // 그러면 하위 NoteCardView.contentText/ComposerTextView가 HanjjokTheme.bodyFont(NSFont)를
     // 다시 호출해 새 폰트를 얻는다.
     @AppStorage("usePretendardBody") private var usePretendardBody = false
 
-    private var paper: Color { scheme == .dark ? GalpiTheme.paperDark : GalpiTheme.paperLight }
-    private var ink: Color { scheme == .dark ? GalpiTheme.inkDark : GalpiTheme.inkLight }
+    private var paper: Color { scheme == .dark ? HanjjokTheme.paperDark : HanjjokTheme.paperLight }
+    private var ink: Color { scheme == .dark ? HanjjokTheme.inkDark : HanjjokTheme.inkLight }
     // [Task 24] 컴포저 필드 구분 배경/체크리스트 버튼 색.
-    private var card: Color { scheme == .dark ? GalpiTheme.cardDark : GalpiTheme.cardLight }
-    private var inkSoft: Color { scheme == .dark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
+    private var card: Color { scheme == .dark ? HanjjokTheme.cardDark : HanjjokTheme.cardLight }
+    private var inkSoft: Color { scheme == .dark ? HanjjokTheme.inkSoftDark : HanjjokTheme.inkSoftLight }
     // [QA r2] 보내기 버튼 활성 색.
-    private var jjok: Color { scheme == .dark ? GalpiTheme.jjokDark : GalpiTheme.jjokLight }
-    private var grainTint: Color { scheme == .dark ? GalpiTheme.grainTintDark : GalpiTheme.grainTintLight }
-    private var grainOpacity: Double { scheme == .dark ? GalpiTheme.grainOpacityDark : GalpiTheme.grainOpacityLight }
+    private var jjok: Color { scheme == .dark ? HanjjokTheme.jjokDark : HanjjokTheme.jjokLight }
+    private var grainTint: Color { scheme == .dark ? HanjjokTheme.grainTintDark : HanjjokTheme.grainTintLight }
+    private var grainOpacity: Double { scheme == .dark ? HanjjokTheme.grainOpacityDark : HanjjokTheme.grainOpacityLight }
 
     /// 256pt 타일(원본 512px @2x)로 쓰기 위해 번들 이미지를 복사해 size를 재설정한다.
     /// NSImage(named:)는 번들 캐시를 공유하므로 원본을 직접 변형하지 않는다.
     private static let grainTileImage: NSImage = {
-        guard let base = (NSImage(named: "GalpiGrain")?.copy() as? NSImage) else {
-            timelineLog.fault("GalpiGrain 텍스처 로드 실패 — 결 오버레이 없이 렌더링됨 (번들 리소스 누락 의심)")
+        guard let base = (NSImage(named: "PaperGrain")?.copy() as? NSImage) else {
+            timelineLog.fault("PaperGrain 텍스처 로드 실패 — 결 오버레이 없이 렌더링됨 (번들 리소스 누락 의심)")
             return NSImage()
         }
-        base.size = NSSize(width: GalpiTheme.grainTileSize, height: GalpiTheme.grainTileSize)
+        base.size = NSSize(width: HanjjokTheme.grainTileSize, height: HanjjokTheme.grainTileSize)
         return base
     }()
 
@@ -104,14 +104,14 @@ struct TimelineView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: GalpiTheme.cardSpacing) {
+                        LazyVStack(alignment: .leading, spacing: HanjjokTheme.cardSpacing) {
                             ForEach(groupedByDay(), id: \.day) { group in
                                 DaySeparator(label: group.label)
                                 ForEach(group.notes) { note in
                                     NoteCardView(note: note, model: model)
                                         .id(note.id)
                                         // 카드 안착 모션 — 전송 시 아래에서 사뿐히 올라온다.
-                                        // TimelineModel.submit/delete가 GalpiTheme.motion으로 감싸며,
+                                        // TimelineModel.submit/delete가 HanjjokTheme.motion으로 감싸며,
                                         // 그 안에서 '동작 줄이기' 존중 여부를 이미 판단한다.
                                         .transition(.asymmetric(
                                             insertion: .move(edge: .bottom).combined(with: .opacity),
@@ -119,7 +119,7 @@ struct TimelineView: View {
                                 }
                             }
                         }
-                        .padding(GalpiTheme.panelHorizontalMargin)
+                        .padding(HanjjokTheme.panelHorizontalMargin)
                     }
                     .onChange(of: model.displayedNotes.count) {
                         if let last = model.displayedNotes.last {
@@ -160,7 +160,7 @@ struct TimelineView: View {
                         // 않는 값)만큼 보정한 17 — 그렇지 않으면 플레이스홀더가 실제 타이핑 위치보다
                         // 5pt 왼쪽에 떠 보인다 (리뷰 지적, Fix round 1).
                         Text("새 메모…")
-                            .font(GalpiTheme.bodyFont())
+                            .font(HanjjokTheme.bodyFont())
                             .foregroundStyle(inkSoft)
                             .padding(.leading, 17)
                             .padding(.top, 10)
@@ -168,7 +168,7 @@ struct TimelineView: View {
                     }
                     ComposerTextView(
                         text: $model.draft,
-                        font: GalpiTheme.bodyNSFont(),
+                        font: HanjjokTheme.bodyNSFont(),
                         onSubmit: sendFromComposer,
                         commands: composerCommands,
                         // [QA r3 ②] 160 초과분은 NSScrollView가 스크롤한다(hasVerticalScroller는
@@ -243,15 +243,15 @@ struct TimelineView: View {
             Image(systemName: "magnifyingglass").opacity(0.5)
             TextField("검색 (초성 가능)", text: $model.searchText)
                 .textFieldStyle(.plain)
-                .font(GalpiTheme.uiFont(size: 14))
+                .font(HanjjokTheme.uiFont(size: 14))
                 .focused($searchFieldFocused)
             if let tag = model.activeTag {
-                let color = GalpiTheme.tagColor(tag, dark: scheme == .dark)
+                let color = HanjjokTheme.tagColor(tag, dark: scheme == .dark)
                 Text("#\(tag)")
-                    .font(GalpiTheme.uiFont(size: 12.5, weight: .semibold))
+                    .font(HanjjokTheme.uiFont(size: 12.5, weight: .semibold))
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
-                    .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(GalpiTheme.tagChipAlpha)))
+                    .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(HanjjokTheme.tagChipAlpha)))
                     .foregroundStyle(color)
             }
         }
@@ -301,15 +301,15 @@ struct DaySeparator: View {
     var body: some View {
         HStack {
             Rectangle().frame(height: 1).opacity(0.15)
-            Text(label).font(GalpiTheme.uiFont(size: 11, weight: .semibold)).opacity(0.6).fixedSize()
+            Text(label).font(HanjjokTheme.uiFont(size: 11, weight: .semibold)).opacity(0.6).fixedSize()
             Rectangle().frame(height: 1).opacity(0.15)
         }
         // 렌더링된 이음매 여백은 승인 토큰(22/12)과 일치해야 한다. 이 뷰는
-        // LazyVStack(spacing: GalpiTheme.cardSpacing) 안에 놓이므로 스택이 위·아래에
+        // LazyVStack(spacing: HanjjokTheme.cardSpacing) 안에 놓이므로 스택이 위·아래에
         // 이미 cardSpacing만큼을 더해준다 — 그 몫을 토큰에서 빼서 나머지만 패딩한다.
         // 22 - 8 = 14 (위), 12 - 8 = 4 (아래)
-        .padding(.top, GalpiTheme.seamMarginTop - GalpiTheme.cardSpacing)
-        .padding(.bottom, GalpiTheme.seamMarginBottom - GalpiTheme.cardSpacing)
+        .padding(.top, HanjjokTheme.seamMarginTop - HanjjokTheme.cardSpacing)
+        .padding(.bottom, HanjjokTheme.seamMarginBottom - HanjjokTheme.cardSpacing)
     }
 }
 

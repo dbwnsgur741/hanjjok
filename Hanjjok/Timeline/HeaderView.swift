@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 /// [v1.1] 앱 크롬 — 사용자 피드백("메모앱 느낌이 안 남") 대응 상단 헤더.
-/// 좌: "갈피" 워드마크 + 현재 필터명(전체/미분류/폴더명/#태그, TimelineModel.filterName).
+/// 좌: "한쪽" 워드마크 + 현재 필터명(전체/미분류/폴더명/#태그, TimelineModel.filterName).
 /// 우: 검색·서랍·설정 아이콘. 서랍(tray) 액션은 TimelineModel.toggleDrawer()에 연결된다
 /// (Task 18) — onTray 기본값은 단위 프리뷰 등에서 값을 안 넘겨도 되게 하는 빈 클로저.
 struct HeaderView: View {
@@ -12,21 +12,21 @@ struct HeaderView: View {
     var onSettings: () -> Void
 
     @Environment(\.colorScheme) private var scheme
-    private var inkSoft: Color { scheme == .dark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
+    private var inkSoft: Color { scheme == .dark ? HanjjokTheme.inkSoftDark : HanjjokTheme.inkSoftLight }
 
     var body: some View {
         HStack(spacing: 8) {
-            Text("갈피")
-                .font(GalpiTheme.bodyBoldFont(size: 15))
+            Text("한쪽")
+                .font(HanjjokTheme.bodyBoldFont(size: 15))
             Text(filterName)
-                .font(GalpiTheme.uiFont(size: 11))
+                .font(HanjjokTheme.uiFont(size: 11))
                 .foregroundStyle(inkSoft)
             Spacer(minLength: 0)
             HeaderIconButton(systemName: "magnifyingglass", inkSoft: inkSoft, action: onSearch)
             HeaderIconButton(systemName: "tray", inkSoft: inkSoft, action: onTray)
             HeaderIconButton(systemName: "gearshape", inkSoft: inkSoft, action: onSettings)
         }
-        .padding(.horizontal, GalpiTheme.panelHorizontalMargin)
+        .padding(.horizontal, HanjjokTheme.panelHorizontalMargin)
         .padding(.vertical, 10)
     }
 }
@@ -40,7 +40,7 @@ private struct HeaderIconButton: View {
     @Environment(\.colorScheme) private var scheme
     @State private var isHovering = false
 
-    private var ink: Color { scheme == .dark ? GalpiTheme.inkDark : GalpiTheme.inkLight }
+    private var ink: Color { scheme == .dark ? HanjjokTheme.inkDark : HanjjokTheme.inkLight }
 
     var body: some View {
         Button(action: action) {

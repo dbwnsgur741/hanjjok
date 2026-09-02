@@ -4,14 +4,14 @@ import SwiftUI
 /// tokens.md 타이포: 본문 MaruBuri / 힌트 Pretendard inkSoft.
 struct EmptyStateView: View {
     @Environment(\.colorScheme) private var scheme
-    private var inkSoft: Color { scheme == .dark ? GalpiTheme.inkSoftDark : GalpiTheme.inkSoftLight }
+    private var inkSoft: Color { scheme == .dark ? HanjjokTheme.inkSoftDark : HanjjokTheme.inkSoftLight }
 
     var body: some View {
         VStack(spacing: 6) {
             Text("무엇이든 적어보세요")
-                .font(GalpiTheme.bodyFont(size: 15))
+                .font(HanjjokTheme.bodyFont(size: 15))
             Text("#태그로 분류됩니다 · ⌘F 검색")
-                .font(GalpiTheme.uiFont(size: 11))
+                .font(HanjjokTheme.uiFont(size: 11))
                 .foregroundStyle(inkSoft)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

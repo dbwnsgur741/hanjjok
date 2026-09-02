@@ -1,14 +1,22 @@
-# Galpi (갈피) Mac App Store 무료 런칭 Implementation Plan
+# Hanjjok (한쪽) Mac App Store 무료 런칭 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Hanji를 Galpi(갈피)로 리브랜딩하고 App Sandbox·코드사인·앱 아이콘을 갖춰 Mac App Store에 무료 앱으로 제출 가능한 상태로 만든다.
+**Goal:** Hanji를 Hanjjok(한쪽)로 리브랜딩하고 App Sandbox·코드사인·앱 아이콘을 갖춰 Mac App Store에 무료 앱으로 제출 가능한 상태로 만든다.
 
 **Architecture:** 기존 DDD-lite 레이어(Domain/Data/PanelKit/App)는 그대로 둔다. 변경은 세 축뿐 — ① 이름·경로·문자열 리네임, ② `.entitlements` 추가와 서명 설정(둘 다 `project.yml`을 통해 XcodeGen이 생성), ③ 에셋 카탈로그 신규 도입. 기능 코드는 건드리지 않는다.
 
 **Tech Stack:** Swift 5.10, SwiftUI + AppKit(NSPanel), GRDB 7.x, KeyboardShortcuts(sindresorhus), XcodeGen, macOS 14+
 
 **Spec:** `docs/superpowers/specs/2026-08-31-hanji-design.md` (§3 확정 정책, §11 미해결 항목)
+
+> **⚠️ 2026-09-02 정정.** 이 문서는 원래 Hanji→**Galpi(갈피)** 리브랜딩 계획으로 작성되었고 Task 1·2·3·4·7은
+> 그 이름으로 실행·커밋되었다. 다음날 `galpi.com`(스페인 페인트 회사, 2000년~)·`galpi.app`·`galpi.kr`이 전부
+> 선점된 사실이 드러났다 — 09-01의 가용성 조회가 도구 결함(macOS `whois`가 `.app` 레지스트리를 조회하지
+> 않음, `.com` 병렬 조회로 Verisign 레이트리밋)으로 오판된 것이다. 브랜드를 **한쪽(Hanjjok)**으로 재변경하고
+> Galpi→Hanjjok 재리네임을 추가로 실행했다(커밋 이력 참조). 이 문서의 식별자는 한쪽 기준으로 일괄 정정했으며,
+> 완료 태스크의 본문은 "무엇을 했는가"의 기록으로 읽되 실제 실행 순서는 git log가 진실이다.
+> 도메인 방침: `hanjjok.app` + `hanjjok.kr` (`.com`은 선점). 가용성 확인 방법은 레지스트리 직접 RDAP + 대조군.
 
 ## Global Constraints
 
@@ -17,10 +25,10 @@
 - **네트워크 코드 금지** — 완전 로컬, 텔레메트리 없음. 이 제약이 App Store 개인정보 라벨을 전부 "수집 안 함"으로 만들어주는 핵심 자산이므로 절대 깨지 않는다
 - 앱은 `LSUIElement=true` 메뉴바 상주 앱 — Dock 아이콘 없음
 - UI 문자열은 한국어
-- 번들 ID는 **`kr.hurdlers.Galpi`로 확정** — App Store Connect 레코드 생성 후에는 영구 고정되어 변경 불가
-- 저장 위치는 샌드박스 컨테이너 내부: `~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application Support/Galpi/galpi.sqlite`
+- 번들 ID는 **`kr.hurdlers.Hanjjok`로 확정** — App Store Connect 레코드 생성 후에는 영구 고정되어 변경 불가
+- 저장 위치는 샌드박스 컨테이너 내부: `~/Library/Containers/kr.hurdlers.Hanjjok/Data/Library/Application Support/Hanjjok/hanjjok.sqlite`
 - 폰트 MaruBuri·Pretendard 모두 OFL — `Resources/Fonts/LICENSE.txt`를 반드시 번들에 동봉 유지
-- `project.yml`이 단일 진실 공급원. `Galpi.xcodeproj`와 `Galpi/Info.plist`는 **생성물이며 `.gitignore` 대상**이다. 절대 직접 편집하지 않는다
+- `project.yml`이 단일 진실 공급원. `Hanjjok.xcodeproj`와 `Hanjjok/Info.plist`는 **생성물이며 `.gitignore` 대상**이다. 절대 직접 편집하지 않는다
 - **2026년 4월 28일부터 App Store는 최신 SDK 빌드만 받는다.** 제출 시점의 Xcode를 최신으로 유지할 것 (`xcodebuild -version`으로 확인). 배포 타깃 macOS 14는 그대로 둬도 무방하다 — SDK 버전과 배포 타깃은 별개다
 
 **빌드·테스트 명령 (전 태스크 공통):**
@@ -32,8 +40,8 @@ swift test --package-path Packages/Data
 
 # 앱 빌드
 xcodegen generate
-xcodebuild -project Galpi.xcodeproj -scheme Galpi -configuration Debug -derivedDataPath build build
-open build/Build/Products/Debug/Galpi.app
+xcodebuild -project Hanjjok.xcodeproj -scheme Hanjjok -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/Hanjjok.app
 ```
 
 ---
@@ -43,9 +51,9 @@ open build/Build/Products/Debug/Galpi.app
 이 항목들은 코드 작업과 병렬로 진행 가능하지만, **Task 5(코드사인) 전까지 1·2번이 완료되어야 한다.**
 
 - [ ] **Apple Developer Program 가입** — 연 $99. 무료 앱이어도 필수. 개인/사업자 선택 시 사업자는 D-U-N-S 번호가 필요해 2~4주 걸리므로, 빠르게 가려면 개인 명의로 등록한다
-- [ ] **도메인 등록** — `galpi.com`, `galpi.app`
-- [ ] **App Store Connect에서 앱 이름 "갈피" 선점** — 레코드 생성만으로 180일간 확보된다. 번들 ID `kr.hurdlers.Galpi` 등록은 **Task 2 완료 후**에 할 것 (한 번 만들면 못 바꾼다)
-- [ ] **개인정보처리방침 페이지 게시** — `galpi.com/privacy`. 내용은 한 문단이면 충분하다: "갈피는 어떠한 데이터도 수집·전송하지 않습니다. 모든 메모는 사용자의 Mac에만 저장되며 네트워크 통신을 하지 않습니다." App Store Connect 제출 시 URL 입력란이 필수다
+- [ ] **도메인 등록** — `hanjjok.app`, `hanjjok.kr` (`.com`은 선점됨)
+- [ ] **App Store Connect에서 앱 이름 "한쪽" 선점** — 레코드 생성만으로 180일간 확보된다. 번들 ID `kr.hurdlers.Hanjjok` 등록은 **Task 2 완료 후**에 할 것 (한 번 만들면 못 바꾼다)
+- [ ] **개인정보처리방침 페이지 게시** — `hanjjok.app/privacy`. 내용은 한 문단이면 충분하다: "한쪽은 어떠한 데이터도 수집·전송하지 않습니다. 모든 메모는 사용자의 Mac에만 저장되며 네트워크 통신을 하지 않습니다." App Store Connect 제출 시 URL 입력란이 필수다
 
 ---
 
@@ -61,27 +69,27 @@ open build/Build/Products/Debug/Galpi.app
 
 **Interfaces:**
 - Consumes: 없음 (첫 태스크)
-- Produces: 내보내기 헤더 문자열 `"# 갈피 전체 내보내기\n"`, 백업 파일명 규칙 `galpi-YYYY-MM-DD.sqlite`. Task 2의 App 계층이 이 규칙에 의존한다
+- Produces: 내보내기 헤더 문자열 `"# 한쪽 전체 내보내기\n"`, 백업 파일명 규칙 `hanjjok-YYYY-MM-DD.sqlite`. Task 2의 App 계층이 이 규칙에 의존한다
 
 - [x] **Step 1: 테스트 기대값을 새 이름으로 고친다 (실패 유도)**
 
-`Packages/Domain/Tests/DomainTests/MarkdownExporterTests.swift` — 18행과 33행의 `한지`를 `갈피`로:
+`Packages/Domain/Tests/DomainTests/MarkdownExporterTests.swift` — 18행과 33행의 `한지`를 `한쪽`로:
 
 ```swift
-        # 갈피 전체 내보내기
+        # 한쪽 전체 내보내기
 ```
 
 ```swift
-        XCTAssertEqual(MarkdownExporter.export([], timeZone: .current), "# 갈피 전체 내보내기\n")
+        XCTAssertEqual(MarkdownExporter.export([], timeZone: .current), "# 한쪽 전체 내보내기\n")
 ```
 
-`Packages/Data/Tests/DataTests/BackupSchedulerTests.swift` — 파일 내 `hanji`를 전부 `galpi`로:
+`Packages/Data/Tests/DataTests/BackupSchedulerTests.swift` — 파일 내 `hanji`를 전부 `hanjjok`로:
 
 ```bash
-sed -i '' 's/hanji/galpi/g' Packages/Data/Tests/DataTests/BackupSchedulerTests.swift
+sed -i '' 's/hanji/hanjjok/g' Packages/Data/Tests/DataTests/BackupSchedulerTests.swift
 ```
 
-이러면 36·56·57·66행의 기대 파일명이 `galpi-2026-08-31.sqlite` 등으로 바뀐다.
+이러면 36·56·57·66행의 기대 파일명이 `hanjjok-2026-08-31.sqlite` 등으로 바뀐다.
 
 - [x] **Step 2: 테스트를 돌려 실패를 확인한다**
 
@@ -91,28 +99,28 @@ swift test --package-path Packages/Data --filter BackupSchedulerTests
 ```
 
 Expected: 두 스위트 모두 FAIL.
-- `MarkdownExporterTests` → `XCTAssertEqual failed: ("# 한지 전체 내보내기\n") is not equal to ("# 갈피 전체 내보내기\n")`
-- `BackupSchedulerTests` → `("["hanji-2026-08-31.sqlite"]") is not equal to ("["galpi-2026-08-31.sqlite"]")`
+- `MarkdownExporterTests` → `XCTAssertEqual failed: ("# 한지 전체 내보내기\n") is not equal to ("# 한쪽 전체 내보내기\n")`
+- `BackupSchedulerTests` → `("["hanji-2026-08-31.sqlite"]") is not equal to ("["hanjjok-2026-08-31.sqlite"]")`
 
 - [x] **Step 3: 소스를 고친다**
 
 `Packages/Domain/Sources/Domain/MarkdownExporter.swift:16`:
 
 ```swift
-        var out = "# 갈피 전체 내보내기\n"
+        var out = "# 한쪽 전체 내보내기\n"
 ```
 
 `Packages/Data/Sources/Data/BackupScheduler.swift` — 17행 생성 경로와 23행 정리 필터 **양쪽 모두**:
 
 ```swift
-        let target = backupsDir.appendingPathComponent("galpi-\(formatter.string(from: now)).sqlite")
+        let target = backupsDir.appendingPathComponent("hanjjok-\(formatter.string(from: now)).sqlite")
 ```
 
 ```swift
-            .filter { $0.lastPathComponent.hasPrefix("galpi-") && $0.pathExtension == "sqlite" }
+            .filter { $0.lastPathComponent.hasPrefix("hanjjok-") && $0.pathExtension == "sqlite" }
 ```
 
-> 두 곳을 함께 바꿔야 한다. 생성만 `galpi-`로 바꾸고 필터를 `hanji-`로 두면 **보관 개수 정리가 영구히 동작하지 않아** 백업이 무한정 쌓인다. 테스트 `keepsOnlyRecent`가 이걸 잡는다.
+> 두 곳을 함께 바꿔야 한다. 생성만 `hanjjok-`로 바꾸고 필터를 `hanji-`로 두면 **보관 개수 정리가 영구히 동작하지 않아** 백업이 무한정 쌓인다. 테스트 `keepsOnlyRecent`가 이걸 잡는다.
 
 - [x] **Step 4: 테스트를 돌려 통과를 확인한다**
 
@@ -127,7 +135,7 @@ Expected: 두 패키지 전체 스위트 PASS.
 
 ```bash
 git add Packages/Domain Packages/Data
-git commit -m "refactor: Domain·Data 계층 산출물 문자열 한지→갈피"
+git commit -m "refactor: Domain·Data 계층 산출물 문자열 한지→한쪽"
 ```
 
 ---
@@ -137,77 +145,77 @@ git commit -m "refactor: Domain·Data 계층 산출물 문자열 한지→갈피
 `HanjiTheme` 심볼 하나가 10개 파일에 124회 등장한다. 기계적 치환이지만 **디렉터리 이동과 `project.yml` 갱신이 함께 가야** 빌드가 성립한다.
 
 **Files:**
-- Rename: `Hanji/` → `Galpi/` (디렉터리)
-- Rename: `Galpi/HanjiApp.swift` → `Galpi/GalpiApp.swift`
-- Rename: `Galpi/Theme/HanjiTheme.swift` → `Galpi/Theme/GalpiTheme.swift`
-- Rename: `Galpi/Resources/Textures/HanjiGrain.png` → `Galpi/Resources/Textures/GalpiGrain.png`
-- Modify: `Galpi/` 하위 전체 `.swift` (심볼·문자열)
+- Rename: `Hanji/` → `Hanjjok/` (디렉터리)
+- Rename: `Hanjjok/HanjiApp.swift` → `Hanjjok/HanjjokApp.swift`
+- Rename: `Hanjjok/Theme/HanjiTheme.swift` → `Hanjjok/Theme/HanjjokTheme.swift`
+- Rename: `Hanjjok/Resources/Textures/HanjiGrain.png` → `Hanjjok/Resources/Textures/HanjjokGrain.png`
+- Modify: `Hanjjok/` 하위 전체 `.swift` (심볼·문자열)
 - Modify: `project.yml`
 - Modify: `.gitignore`
 
 **Interfaces:**
-- Consumes: Task 1의 백업 파일명 규칙 `galpi-YYYY-MM-DD.sqlite`
-- Produces: 타깃명 `Galpi`, 스킴 `Galpi`, 번들 ID `kr.hurdlers.Galpi`, 앱 지원 디렉터리명 `Galpi`, DB 파일명 `galpi.sqlite`. Task 3의 entitlements 경로와 Task 5의 서명 설정이 이 타깃명에 의존한다
+- Consumes: Task 1의 백업 파일명 규칙 `hanjjok-YYYY-MM-DD.sqlite`
+- Produces: 타깃명 `Hanjjok`, 스킴 `Hanjjok`, 번들 ID `kr.hurdlers.Hanjjok`, 앱 지원 디렉터리명 `Hanjjok`, DB 파일명 `hanjjok.sqlite`. Task 3의 entitlements 경로와 Task 5의 서명 설정이 이 타깃명에 의존한다
 
 - [x] **Step 1: 디렉터리와 파일을 옮긴다**
 
 ```bash
-git mv Hanji Galpi
-git mv Galpi/HanjiApp.swift Galpi/GalpiApp.swift
-git mv Galpi/Theme/HanjiTheme.swift Galpi/Theme/GalpiTheme.swift
-git mv Galpi/Resources/Textures/HanjiGrain.png Galpi/Resources/Textures/GalpiGrain.png
+git mv Hanji Hanjjok
+git mv Hanjjok/HanjiApp.swift Hanjjok/HanjjokApp.swift
+git mv Hanjjok/Theme/HanjiTheme.swift Hanjjok/Theme/HanjjokTheme.swift
+git mv Hanjjok/Resources/Textures/HanjiGrain.png Hanjjok/Resources/Textures/HanjjokGrain.png
 ```
 
 - [x] **Step 2: 심볼을 치환한다**
 
 ```bash
-find Galpi -name "*.swift" -exec sed -i '' \
-  -e 's/HanjiTheme/GalpiTheme/g' \
-  -e 's/HanjiApp/GalpiApp/g' \
-  -e 's/HanjiGrain/GalpiGrain/g' {} +
+find Hanjjok -name "*.swift" -exec sed -i '' \
+  -e 's/HanjiTheme/HanjjokTheme/g' \
+  -e 's/HanjiApp/HanjjokApp/g' \
+  -e 's/HanjiGrain/HanjjokGrain/g' {} +
 ```
 
 - [x] **Step 3: 사용자에게 보이는 한국어 문자열을 바꾼다**
 
 `sed`로 일괄 치환하지 말 것 — 주석과 UI 문자열이 섞여 있어 문맥 확인이 필요하다. 아래 5곳을 직접 편집한다:
 
-`Galpi/GalpiApp.swift:62` (메뉴바 아이콘 접근성 레이블):
+`Hanjjok/HanjjokApp.swift:62` (메뉴바 아이콘 접근성 레이블):
 ```swift
-                                 accessibilityDescription: "갈피")
+                                 accessibilityDescription: "한쪽")
 ```
 
-`Galpi/GalpiApp.swift:129` (우클릭 메뉴):
+`Hanjjok/HanjjokApp.swift:129` (우클릭 메뉴):
 ```swift
-        menu.addItem(withTitle: "갈피 종료",
+        menu.addItem(withTitle: "한쪽 종료",
 ```
 
-`Galpi/GalpiApp.swift:141` (설정 창 제목):
+`Hanjjok/HanjjokApp.swift:141` (설정 창 제목):
 ```swift
-            window.title = "갈피 설정"
+            window.title = "한쪽 설정"
 ```
 
-`Galpi/Timeline/HeaderView.swift:19` (헤더 워드마크):
+`Hanjjok/Timeline/HeaderView.swift:19` (헤더 워드마크):
 ```swift
-            Text("갈피")
+            Text("한쪽")
 ```
 
-`Galpi/GalpiApp.swift` 내보내기 기본 파일명 (157행 부근):
+`Hanjjok/HanjjokApp.swift` 내보내기 기본 파일명 (157행 부근):
 ```swift
-                panel.nameFieldStringValue = "galpi-export.md"
+                panel.nameFieldStringValue = "hanjjok-export.md"
 ```
 
-주석 2곳(`Galpi/Theme/GalpiTheme.swift:109`, `Galpi/Timeline/HeaderView.swift:5`)의 `"한지"` 워드마크 언급도 `"갈피"`로 고친다.
+주석 2곳(`Hanjjok/Theme/HanjjokTheme.swift:109`, `Hanjjok/Timeline/HeaderView.swift:5`)의 `"한지"` 워드마크 언급도 `"한쪽"`로 고친다.
 
 - [x] **Step 4: DB 경로를 바꾼다**
 
-`Galpi/GalpiApp.swift:37-41`:
+`Hanjjok/HanjjokApp.swift:37-41`:
 
 ```swift
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Galpi")
+            .appendingPathComponent("Hanjjok")
         do {
-            repo = try GRDBNoteRepository(databaseURL: appSupport.appendingPathComponent("galpi.sqlite"))
+            repo = try GRDBNoteRepository(databaseURL: appSupport.appendingPathComponent("hanjjok.sqlite"))
 ```
 
 > `.applicationSupportDirectory`는 샌드박스가 켜지면 자동으로 컨테이너 안으로 리다이렉트된다. Task 3에서 코드를 또 고칠 필요가 없다.
@@ -215,7 +223,7 @@ find Galpi -name "*.swift" -exec sed -i '' \
 - [x] **Step 5: `project.yml`을 갱신한다**
 
 ```yaml
-name: Galpi
+name: Hanjjok
 options:
   bundleIdPrefix: kr.hurdlers
   deploymentTarget:
@@ -231,21 +239,21 @@ packages:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: 2.0.0
 targets:
-  Galpi:
+  Hanjjok:
     type: application
     platform: macOS
     sources:
-      - path: Galpi
+      - path: Hanjjok
     dependencies:
       - package: Domain
       - package: Data
       - package: PanelKit
       - package: KeyboardShortcuts
     info:
-      path: Galpi/Info.plist
+      path: Hanjjok/Info.plist
       properties:
         LSUIElement: true
-        CFBundleDisplayName: 갈피
+        CFBundleDisplayName: 한쪽
         NSHumanReadableCopyright: ""
         ATSApplicationFontsPath: .
     settings:
@@ -259,25 +267,25 @@ targets:
 
 - [x] **Step 6: `.gitignore`를 갱신한다**
 
-`Hanji/Info.plist` 줄을 `Galpi/Info.plist`로 바꾼다.
+`Hanji/Info.plist` 줄을 `Hanjjok/Info.plist`로 바꾼다.
 
 - [x] **Step 7: 빌드하고 실행해 확인한다**
 
 ```bash
 rm -rf Hanji.xcodeproj build
 xcodegen generate
-xcodebuild -project Galpi.xcodeproj -scheme Galpi -configuration Debug -derivedDataPath build build
-open build/Build/Products/Debug/Galpi.app
+xcodebuild -project Hanjjok.xcodeproj -scheme Hanjjok -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/Hanjjok.app
 ```
 
-Expected: 빌드 성공. 메뉴바에 아이콘이 뜨고, ⌥Space로 패널이 열리고, **헤더 워드마크가 "갈피"로 보인다.** 우클릭 메뉴에 "갈피 종료"가 있다.
+Expected: 빌드 성공. 메뉴바에 아이콘이 뜨고, ⌥Space로 패널이 열리고, **헤더 워드마크가 "한쪽"로 보인다.** 우클릭 메뉴에 "한쪽 종료"가 있다.
 
-> 이 시점에는 앱이 빈 DB로 시작한다 (`Galpi/galpi.sqlite`가 새로 생성됨). 기존 메모는 Task 4에서 옮긴다. 놀라지 말 것.
+> 이 시점에는 앱이 빈 DB로 시작한다 (`Hanjjok/hanjjok.sqlite`가 새로 생성됨). 기존 메모는 Task 4에서 옮긴다. 놀라지 말 것.
 
 - [x] **Step 8: 남은 참조가 없는지 검증한다**
 
 ```bash
-grep -rn "Hanji\|hanji" --include="*.swift" --include="*.yml" --include="*.gitignore" Galpi/ Packages/ project.yml .gitignore | grep -v build/ | grep -v "\.build/"
+grep -rn "Hanji\|hanji" --include="*.swift" --include="*.yml" --include="*.gitignore" Hanjjok/ Packages/ project.yml .gitignore | grep -v build/ | grep -v "\.build/"
 ```
 
 Expected: 출력 없음. 무언가 나오면 문맥을 보고 고친 뒤 Step 7을 다시 돌린다.
@@ -286,7 +294,7 @@ Expected: 출력 없음. 무언가 나오면 문맥을 보고 고친 뒤 Step 7�
 
 ```bash
 git add -A
-git commit -m "refactor: 앱 타깃·번들ID·경로 Hanji→Galpi 리브랜딩"
+git commit -m "refactor: 앱 타깃·번들ID·경로 Hanji→Hanjjok 리브랜딩"
 ```
 
 ---
@@ -298,17 +306,17 @@ Mac App Store의 **유일한 하드 블로커**다. `com.apple.security.app-sand
 이 앱이 쓰는 민감 API는 전부 이미 샌드박스 호환 방식이라 **entitlement 추가 외에 코드 수정이 없어야 정상**이다. 그 전제를 수동 QA로 검증하는 것이 이 태스크의 본체다.
 
 **Files:**
-- Create: `Galpi/Galpi.entitlements`
+- Create: `Hanjjok/Hanjjok.entitlements`
 - Modify: `project.yml`
 - Modify: `docs/qa-checklist.md`
 
 **Interfaces:**
-- Consumes: Task 2의 타깃명 `Galpi`, 번들 ID `kr.hurdlers.Galpi`
-- Produces: 샌드박스 컨테이너 경로 `~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application Support/Galpi/`. Task 4의 데이터 이관이 이 경로에 의존한다
+- Consumes: Task 2의 타깃명 `Hanjjok`, 번들 ID `kr.hurdlers.Hanjjok`
+- Produces: 샌드박스 컨테이너 경로 `~/Library/Containers/kr.hurdlers.Hanjjok/Data/Library/Application Support/Hanjjok/`. Task 4의 데이터 이관이 이 경로에 의존한다
 
 - [x] **Step 1: entitlements 파일을 만든다**
 
-`Galpi/Galpi.entitlements`:
+`Hanjjok/Hanjjok.entitlements`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -329,7 +337,7 @@ Mac App Store의 **유일한 하드 블로커**다. `com.apple.security.app-sand
 
 - [x] **Step 2: `project.yml`에 entitlements를 연결한다**
 
-`targets.Galpi.settings.base`에 한 줄 추가:
+`targets.Hanjjok.settings.base`에 한 줄 추가:
 
 ```yaml
     settings:
@@ -337,15 +345,15 @@ Mac App Store의 **유일한 하드 블로커**다. `com.apple.security.app-sand
         SWIFT_VERSION: "5.10"
         CODE_SIGN_IDENTITY: "-"
         ENABLE_HARDENED_RUNTIME: false
-        CODE_SIGN_ENTITLEMENTS: Galpi/Galpi.entitlements
+        CODE_SIGN_ENTITLEMENTS: Hanjjok/Hanjjok.entitlements
 ```
 
 - [x] **Step 3: 빌드하고 샌드박스가 실제로 켜졌는지 확인한다**
 
 ```bash
 xcodegen generate
-xcodebuild -project Galpi.xcodeproj -scheme Galpi -configuration Debug -derivedDataPath build build
-codesign -d --entitlements - build/Build/Products/Debug/Galpi.app
+xcodebuild -project Hanjjok.xcodeproj -scheme Hanjjok -configuration Debug -derivedDataPath build build
+codesign -d --entitlements - build/Build/Products/Debug/Hanjjok.app
 ```
 
 Expected: 출력에 `com.apple.security.app-sandbox` → `true`가 보인다.
@@ -353,12 +361,12 @@ Expected: 출력에 `com.apple.security.app-sandbox` → `true`가 보인다.
 - [x] **Step 4: 컨테이너가 생성되는지 확인한다**
 
 ```bash
-open build/Build/Products/Debug/Galpi.app
+open build/Build/Products/Debug/Hanjjok.app
 sleep 3
-ls -la ~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application\ Support/Galpi/
+ls -la ~/Library/Containers/kr.hurdlers.Hanjjok/Data/Library/Application\ Support/Hanjjok/
 ```
 
-Expected: `galpi.sqlite`와 `Backups/`가 컨테이너 **안에** 생성되어 있다. `~/Library/Application Support/Galpi/`에는 아무것도 안 생긴다.
+Expected: `hanjjok.sqlite`와 `Backups/`가 컨테이너 **안에** 생성되어 있다. `~/Library/Application Support/Hanjjok/`에는 아무것도 안 생긴다.
 
 - [x] **Step 5: 샌드박스에서 깨지기 쉬운 4가지를 수동 검증한다**
 
@@ -376,7 +384,7 @@ Expected: `galpi.sqlite`와 `Backups/`가 컨테이너 **안에** 생성되어 �
 ```markdown
 ## 샌드박스 (App Store 빌드 필수)
 - [ ] `codesign -d --entitlements -` 출력에 app-sandbox = true
-- [ ] 데이터가 ~/Library/Containers/kr.hurdlers.Galpi/ 안에 생성된다
+- [ ] 데이터가 ~/Library/Containers/kr.hurdlers.Hanjjok/ 안에 생성된다
 - [ ] ⌥Space 전역 단축키가 손쉬운 접근 권한 없이 동작한다
 - [ ] Esc로 닫으면 직전 앱(Safari 등)으로 포커스가 복귀한다
 - [ ] 전체 내보내기가 NSSavePanel로 실제 파일을 쓴다
@@ -386,7 +394,7 @@ Expected: `galpi.sqlite`와 `Backups/`가 컨테이너 **안에** 생성되어 �
 - [ ] **Step 7: 커밋**
 
 ```bash
-git add Galpi/Galpi.entitlements project.yml docs/qa-checklist.md
+git add Hanjjok/Hanjjok.entitlements project.yml docs/qa-checklist.md
 git commit -m "feat: App Sandbox entitlement 도입 — Mac App Store 요구사항"
 ```
 
@@ -402,10 +410,10 @@ git commit -m "feat: App Sandbox entitlement 도입 — Mac App Store 요구사�
 
 - [x] **Step 1: 앱을 종료한다**
 
-WAL이 열린 채로 복사하면 데이터가 유실될 수 있다. 메뉴바 → "갈피 종료"로 확실히 끈다.
+WAL이 열린 채로 복사하면 데이터가 유실될 수 있다. 메뉴바 → "한쪽 종료"로 확실히 끈다.
 
 ```bash
-pgrep -x Galpi || echo "종료됨 — 진행 가능"
+pgrep -x Hanjjok || echo "종료됨 — 진행 가능"
 ```
 
 Expected: `종료됨 — 진행 가능`
@@ -421,20 +429,20 @@ Expected: `0|N|N` 형태의 출력. WAL 파일 크기가 0에 가까워진다.
 - [x] **Step 3: 컨테이너로 복사한다 (이동 아님)**
 
 ```bash
-DEST=~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application\ Support/Galpi
+DEST=~/Library/Containers/kr.hurdlers.Hanjjok/Data/Library/Application\ Support/Hanjjok
 mkdir -p "$DEST"
-cp ~/Library/Application\ Support/Hanji/hanji.sqlite "$DEST/galpi.sqlite"
+cp ~/Library/Application\ Support/Hanji/hanji.sqlite "$DEST/hanjjok.sqlite"
 ls -la "$DEST"
 ```
 
-Expected: `galpi.sqlite`가 원본과 같은 크기로 존재한다.
+Expected: `hanjjok.sqlite`가 원본과 같은 크기로 존재한다.
 
 > **복사이지 이동이 아니다.** 원본 `~/Library/Application Support/Hanji/`는 롤백 안전망으로 남겨둔다. 몇 주 쓰고 문제없으면 그때 지운다.
 
 - [x] **Step 4: 앱을 켜서 메모가 살아있는지 확인한다**
 
 ```bash
-open build/Build/Products/Debug/Galpi.app
+open build/Build/Products/Debug/Hanjjok.app
 ```
 
 Expected: 기존 메모가 타임라인에 전부 보인다. 검색(초성 포함)과 폴더 칩도 정상 동작한다.
@@ -470,7 +478,7 @@ Expected: `Apple Development: ...` 또는 `Apple Distribution: ...` 항목과 �
     settings:
       base:
         SWIFT_VERSION: "5.10"
-        CODE_SIGN_ENTITLEMENTS: Galpi/Galpi.entitlements
+        CODE_SIGN_ENTITLEMENTS: Hanjjok/Hanjjok.entitlements
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: YOUR_TEAM_ID
         ENABLE_HARDENED_RUNTIME: true
@@ -478,7 +486,7 @@ Expected: `Apple Development: ...` 또는 `Apple Distribution: ...` 항목과 �
 
 `CODE_SIGN_IDENTITY: "-"` 줄은 **삭제한다.** 자동 서명이 상황에 맞는 인증서를 고르게 둔다.
 
-버전은 빌드 설정이 아니라 `info.properties`에 넣는다. `targets.Galpi.info.properties`에 두 줄 추가:
+버전은 빌드 설정이 아니라 `info.properties`에 넣는다. `targets.Hanjjok.info.properties`에 두 줄 추가:
 
 ```yaml
         CFBundleShortVersionString: "1.0"
@@ -493,8 +501,8 @@ Expected: `Apple Development: ...` 또는 `Apple Distribution: ...` 항목과 �
 
 ```bash
 xcodegen generate
-xcodebuild -project Galpi.xcodeproj -scheme Galpi -configuration Release \
-  -archivePath build/Galpi.xcarchive archive
+xcodebuild -project Hanjjok.xcodeproj -scheme Hanjjok -configuration Release \
+  -archivePath build/Hanjjok.xcarchive archive
 ```
 
 Expected: `ARCHIVE SUCCEEDED`. 실패하면 대개 프로비저닝 프로파일 문제이므로 Xcode로 프로젝트를 열어 Signing & Capabilities 탭의 경고를 읽는다.
@@ -502,10 +510,10 @@ Expected: `ARCHIVE SUCCEEDED`. 실패하면 대개 프로비저닝 프로파일 
 - [ ] **Step 4: 아카이브의 서명과 entitlements를 검증한다**
 
 ```bash
-codesign -dv --entitlements - build/Galpi.xcarchive/Products/Applications/Galpi.app 2>&1 | head -30
+codesign -dv --entitlements - build/Hanjjok.xcarchive/Products/Applications/Hanjjok.app 2>&1 | head -30
 ```
 
-Expected: `Authority=Apple Distribution: ...`, entitlements에 `app-sandbox = true`, `Identifier=kr.hurdlers.Galpi`.
+Expected: `Authority=Apple Distribution: ...`, entitlements에 `app-sandbox = true`, `Identifier=kr.hurdlers.Hanjjok`.
 
 - [ ] **Step 5: 커밋**
 
@@ -525,9 +533,9 @@ git commit -m "chore: App Store 배포용 코드사인·Hardened Runtime 설정"
 현재 프로젝트에는 `.xcassets`가 아예 없어서 에셋 카탈로그부터 만들어야 한다.
 
 **Files:**
-- Create: `Galpi/Resources/Assets.xcassets/Contents.json`
-- Create: `Galpi/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json`
-- Create: `Galpi/Resources/Assets.xcassets/AppIcon.appiconset/icon_1024.png` 외 9개 PNG
+- Create: `Hanjjok/Resources/Assets.xcassets/Contents.json`
+- Create: `Hanjjok/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json`
+- Create: `Hanjjok/Resources/Assets.xcassets/AppIcon.appiconset/icon_1024.png` 외 9개 PNG
 - Modify: `project.yml`
 
 **Interfaces:**
@@ -536,16 +544,16 @@ git commit -m "chore: App Store 배포용 코드사인·Hardened Runtime 설정"
 
 - [ ] **Step 1: 1024×1024 원본 아이콘을 만든다**
 
-디자인 방향 — 브랜드가 한지에서 갈피로 바뀌었으므로 붓 모티프보다 **책갈피**가 맞다. 스펙 §8의 색을 그대로 쓴다: 한지 미색 바탕(`#F5F1E8` 계열), 먹빛 획, 쪽빛(`#2E5A88` 계열) 갈피 끈 하나. macOS 26 아이콘 가이드라인상 둥근 사각형 안에 여백을 넉넉히 둔다.
+디자인 방향 — 한쪽 = '한 장의 종이'이므로 **낱장 모티프**: 한지 미색의 종이 한 장, 한쪽 가장자리에 쪽빛 획(패널이 화면 한쪽에서 나오는 것을 암시). 붓·책갈피는 폐기. 스펙 §8의 색을 그대로 쓴다: 한지 미색 바탕(`#F5F1E8` 계열), 먹빛 획, 쪽빛(`#2E5A88` 계열) 한쪽 끈 하나. macOS 26 아이콘 가이드라인상 둥근 사각형 안에 여백을 넉넉히 둔다.
 
-원본을 `Galpi/Resources/Assets.xcassets/AppIcon.appiconset/icon_1024.png`로 저장한다.
+원본을 `Hanjjok/Resources/Assets.xcassets/AppIcon.appiconset/icon_1024.png`로 저장한다.
 
-> 이 단계는 디자인 작업이라 코드로 대체할 수 없다. 직접 그리거나 디자이너에게 맡긴다. 임시로 진행하려면 단색 바탕에 갈피 끈만 있는 단순한 도형으로 시작해도 제출은 통과한다 — 다만 스토어 목록에서 첫인상을 결정하는 요소이므로 런칭 전에는 제대로 만든다.
+> 이 단계는 디자인 작업이라 코드로 대체할 수 없다. 직접 그리거나 디자이너에게 맡긴다. 임시로 진행하려면 단색 바탕에 한쪽 끈만 있는 단순한 도형으로 시작해도 제출은 통과한다 — 다만 스토어 목록에서 첫인상을 결정하는 요소이므로 런칭 전에는 제대로 만든다.
 
 - [ ] **Step 2: 나머지 크기를 생성한다**
 
 ```bash
-cd Galpi/Resources/Assets.xcassets/AppIcon.appiconset
+cd Hanjjok/Resources/Assets.xcassets/AppIcon.appiconset
 for s in 16 32 64 128 256 512; do
   sips -z $s $s icon_1024.png --out icon_${s}.png
 done
@@ -559,7 +567,7 @@ cd -
 
 - [ ] **Step 3: 에셋 카탈로그 메타데이터를 쓴다**
 
-`Galpi/Resources/Assets.xcassets/Contents.json`:
+`Hanjjok/Resources/Assets.xcassets/Contents.json`:
 
 ```json
 {
@@ -567,7 +575,7 @@ cd -
 }
 ```
 
-`Galpi/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json`:
+`Hanjjok/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json`:
 
 ```json
 {
@@ -589,7 +597,7 @@ cd -
 
 - [ ] **Step 4: `project.yml`에 에셋 카탈로그를 연결한다**
 
-`targets.Galpi.settings.base`에 추가:
+`targets.Hanjjok.settings.base`에 추가:
 
 ```yaml
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -599,16 +607,16 @@ cd -
 
 ```bash
 xcodegen generate
-xcodebuild -project Galpi.xcodeproj -scheme Galpi -configuration Debug -derivedDataPath build build
+xcodebuild -project Hanjjok.xcodeproj -scheme Hanjjok -configuration Debug -derivedDataPath build build
 open build/Build/Products/Debug/
 ```
 
-Expected: Finder에서 `Galpi.app`에 새 아이콘이 보인다. (`LSUIElement`라 Dock에는 안 뜨는 게 정상이다.)
+Expected: Finder에서 `Hanjjok.app`에 새 아이콘이 보인다. (`LSUIElement`라 Dock에는 안 뜨는 게 정상이다.)
 
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add Galpi/Resources/Assets.xcassets project.yml
+git add Hanjjok/Resources/Assets.xcassets project.yml
 git commit -m "feat: 앱 아이콘 에셋 카탈로그 추가"
 ```
 
@@ -626,9 +634,9 @@ git commit -m "feat: 앱 아이콘 에셋 카탈로그 추가"
 `## 3. 확정 정책` 표에 행을 추가한다:
 
 ```markdown
-| 제품명 (v1.4) | **갈피 (Galpi)** — 2026-09-01 변경. 구 Hanji(한지). 사유: hanji.kr 및 .kr 계열 전 선점, 일반명사라 상표 식별력 부족, Play스토어 동명 앱 존재. 도메인 galpi.com / galpi.app |
-| 배포 (v1.4) | Mac App Store **무료** 배포. App Sandbox 필수, 번들 ID `kr.hurdlers.Galpi` 영구 고정 |
-| 저장 위치 (v1.4) | 샌드박스 컨테이너 `~/Library/Containers/kr.hurdlers.Galpi/Data/Library/Application Support/Galpi/galpi.sqlite` |
+| 제품명 (v1.4) | **한쪽 (Hanjjok)** — 실제 문안은 스펙 §3 제품명 행 참조(09-02 정정본이 진실) |
+| 배포 (v1.4) | Mac App Store **무료** 배포. App Sandbox 필수, 번들 ID `kr.hurdlers.Hanjjok` 영구 고정 |
+| 저장 위치 (v1.4) | 샌드박스 컨테이너 `~/Library/Containers/kr.hurdlers.Hanjjok/Data/Library/Application Support/Hanjjok/hanjjok.sqlite` |
 ```
 
 §3의 기존 "저장 위치" 행과 §11의 "앱 아이콘 디자인", "앱 이름 표기" 항목도 갱신·해소 처리한다.
@@ -637,7 +645,7 @@ git commit -m "feat: 앱 아이콘 에셋 카탈로그 추가"
 
 ```bash
 git add docs/
-git commit -m "docs: 스펙 v1.4 — 갈피 리브랜딩 및 App Store 배포 정책"
+git commit -m "docs: 스펙 v1.4 — 한쪽 리브랜딩 및 App Store 배포 정책"
 ```
 
 ---
@@ -647,7 +655,7 @@ git commit -m "docs: 스펙 v1.4 — 갈피 리브랜딩 및 App Store 배포 �
 Task 1~7 완료 후, App Store Connect에서 처리한다.
 
 - [ ] **개인정보 라벨** — 전 항목 "데이터를 수집하지 않음". 네트워크 코드가 없으므로 사실 그대로다
-- [ ] **개인정보처리방침 URL** — `galpi.com/privacy` (Task 0에서 게시)
+- [ ] **개인정보처리방침 URL** — `hanjjok.app/privacy` (Task 0에서 게시)
 - [ ] **스크린샷** — Mac용 1280×800 이상. 최소 1장, 권장 4~5장. 한지 라이트/먹 다크 양쪽을 보여준다. **초성 검색 장면을 반드시 포함** — 이게 유일한 차별점이다
 - [ ] **앱 설명** — 첫 두 줄이 목록에서 잘리지 않고 보이는 전부다. "초성으로 찾는 맥 메모장" 같은 훅을 맨 앞에 둔다
 - [ ] **키워드** — 메모, 초성검색, 한글, 스크래치패드, 마크다운, 메뉴바
@@ -668,7 +676,7 @@ Task 1~7 완료 후, App Store Connect에서 처리한다.
 1단계 (이 계획서, 2주)   무료 Mac 런칭 → 수요 검증
 2단계 (4~6주)            반응 측정 — 다운로드·리뷰·커뮤니티
 3단계 (조건부)           iCloud 동기화 + iOS 앱 + 영문 로케일
-4단계                    무료 유지 + "갈피 Plus" $5 IAP로 동기화·iOS 잠금 해제
+4단계                    무료 유지 + "한쪽 Plus" $5 IAP로 동기화·iOS 잠금 해제
 ```
 
 **4단계를 $5 선결제가 아니라 IAP로 하는 이유:** 무료로 받아 써보고 결제하는 편이 전환율이 높고, 이미 무료로 받은 사용자를 잃지 않으며, [Small Business Program 15% 수수료](https://developer.apple.com/app-store/small-business-program/)가 IAP에도 동일하게 적용된다(신규 개발자 즉시 자격). $5 IAP 실수령 약 $4.25.

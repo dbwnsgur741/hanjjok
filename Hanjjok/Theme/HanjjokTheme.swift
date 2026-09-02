@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import os
 
-private let themeLog = Logger(subsystem: "kr.hurdlers.Galpi", category: "theme")
+private let themeLog = Logger(subsystem: "kr.hurdlers.Hanjjok", category: "theme")
 
 extension Color {
     init(hex: UInt32, alpha: Double = 1.0) {
@@ -16,7 +16,7 @@ extension Color {
 
 /// docs/design/tokens.md (목업 승인: 2026-08-31) 의 값을 그대로 옮긴 것.
 /// 색·치수를 바꿀 때는 tokens.md를 먼저 갱신하고 여기에 반영한다.
-enum GalpiTheme {
+enum HanjjokTheme {
     // MARK: - 바탕 · 카드 · 본문 잉크
 
     static let paperLight = Color(hex: 0xE2D9C2)
@@ -106,7 +106,7 @@ enum GalpiTheme {
         themeLog.fault("본문 폰트 '\(name, privacy: .public)' 로드 실패 — 시스템 폰트로 대체 (번들 손상 의심)")
         return .systemFont(ofSize: size)
     }
-    /// 헤더 워드마크("갈피") 전용 — MaruBuri Bold("SB급" 굵기). 본문(bodyFont)에는 쓰지 않는다.
+    /// 헤더 워드마크("한쪽") 전용 — MaruBuri Bold("SB급" 굵기). 본문(bodyFont)에는 쓰지 않는다.
     static func bodyBoldFont(size: CGFloat = 15) -> Font {
         guard NSFont(name: FontName.maruBuriBold, size: size) != nil else {
             themeLog.fault("굵은 본문 폰트 '\(FontName.maruBuriBold, privacy: .public)' 로드 실패 — 시스템 폰트로 대체 (번들 손상 의심)")
