@@ -96,10 +96,20 @@ final class TimelineModel {
     func submit() async -> Bool {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return false }
-        let note = Note(id: UUID(), content: text, createdAt: Date(), updatedAt: nil)
+        // 새 메모는 지금 보고 있는 폴더에 속한다. 예전에는 folderId를 아예 넘기지 않아
+        // 폴더를 보고 있어도 항상 미분류로 저장됐고(기본값 nil), 아래 append가 화면에는
+        // 그 폴더에 들어간 것처럼 보여줘 다음 재로드까지 버그가 가려졌다 — 사용자에게는
+        // 메모가 나중에 "전체로 이동"한 것처럼 보였다. .all/.unfiled를 보고 있을 때는
+        // 종전대로 미분류(nil)가 맞다.
+        let targetFolder: UUID? = if case .folder(let id) = folderFilter { id } else { nil }
+        let note = Note(id: UUID(), content: text, createdAt: Date(), updatedAt: nil,
+                        folderId: targetFolder)
         do {
             try await repo.save(note)
-            HanjjokTheme.motion { notes.append(note) }
+            // 현재 필터에 실제로 해당할 때만 목록에 넣는다(move()의 applyMoveResult와 같은 기준).
+            if matchesFolderFilter(note.folderId) {
+                HanjjokTheme.motion { notes.append(note) }
+            }
             draft = ""
             return true
         } catch {
