@@ -8,7 +8,7 @@ final class FolderTests: XCTestCase {
 
     override func setUp() {
         tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("galpi-folder-test-\(UUID().uuidString)")
+            .appendingPathComponent("hanjjok-folder-test-\(UUID().uuidString)")
             .appendingPathComponent("test.sqlite")
     }
     override func tearDown() {

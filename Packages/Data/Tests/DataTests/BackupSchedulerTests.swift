@@ -7,13 +7,13 @@ final class BackupSchedulerTests: XCTestCase {
 
     override func setUp() {
         dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("galpi-backup-\(UUID().uuidString)")
+            .appendingPathComponent("hanjjok-backup-\(UUID().uuidString)")
     }
     override func tearDown() {
         try? FileManager.default.removeItem(at: dir)
     }
     private func makeRepo() throws -> GRDBNoteRepository {
-        try GRDBNoteRepository(databaseURL: dir.appendingPathComponent("db/galpi.sqlite"))
+        try GRDBNoteRepository(databaseURL: dir.appendingPathComponent("db/hanjjok.sqlite"))
     }
     private var backupsDir: URL { dir.appendingPathComponent("Backups") }
     private func day(_ s: String) -> Date {
@@ -33,7 +33,7 @@ final class BackupSchedulerTests: XCTestCase {
         try await repo.save(Note(id: UUID(), content: "백업 대상", createdAt: Date(), updatedAt: nil))
         let ran = try BackupScheduler.runIfNeeded(repository: repo, backupsDir: backupsDir, now: day("2026-08-31"))
         XCTAssertTrue(ran)
-        XCTAssertEqual(try backupNames(), ["galpi-2026-08-31.sqlite"])
+        XCTAssertEqual(try backupNames(), ["hanjjok-2026-08-31.sqlite"])
     }
 
     func test_같은_날_두_번째_실행은_건너뛴다() async throws {
@@ -53,8 +53,8 @@ final class BackupSchedulerTests: XCTestCase {
         }
         let names = try backupNames()
         XCTAssertEqual(names.count, 7)
-        XCTAssertEqual(names.first, "galpi-2026-08-03.sqlite")
-        XCTAssertEqual(names.last, "galpi-2026-08-09.sqlite")
+        XCTAssertEqual(names.first, "hanjjok-2026-08-03.sqlite")
+        XCTAssertEqual(names.last, "hanjjok-2026-08-09.sqlite")
     }
 
     func test_백업_파일은_열어서_읽을_수_있다() async throws {
@@ -63,7 +63,7 @@ final class BackupSchedulerTests: XCTestCase {
         try await repo.save(n)
         _ = try BackupScheduler.runIfNeeded(repository: repo, backupsDir: backupsDir, now: day("2026-08-31"))
         let restored = try GRDBNoteRepository(
-            databaseURL: backupsDir.appendingPathComponent("galpi-2026-08-31.sqlite"))
+            databaseURL: backupsDir.appendingPathComponent("hanjjok-2026-08-31.sqlite"))
         let fetched = try await restored.note(id: n.id)
         XCTAssertEqual(fetched?.content, "복구 확인")
     }
