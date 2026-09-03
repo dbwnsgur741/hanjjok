@@ -10,6 +10,12 @@ import PanelKit
 /// [v1.5] 아래 "단축키" 표는 안내 전용 — "수정할 때 Enter인지 뭔지 모르겠다"는 피드백에 대한
 /// 한눈 참조. 바꿀 수 있는 건 위 Recorder의 패널 단축키뿐이라, 표의 첫 행은 Recorder 값을
 /// 따라간다(onChange로 동기화).
+/// [v1.5 fix] **기본값 ⌥Space는 Recorder로 다시 녹화할 수 없다.** KeyboardShortcuts의
+/// `Shortcut.isDisallowed`가 macOS 15.0·15.1 + 샌드박스에서 ⌥(·⇧)만 조합한 단축키를 거부하고
+/// "Option 수정자는 Command 또는 Control과 함께 사용해야 합니다" 알럿을 띄운다(라이브러리가
+/// 참조한 Apple 포럼 763878 이슈의 과잉 방어 — 실제 등록·동작은 정상, 사용자 실사용으로 확인).
+/// 사용자가 ⓧ/Delete로 지우고 나면(UserDefaults에 0 저장) 되돌릴 길이 없었던 실사용 버그 —
+/// `KeyboardShortcuts.reset`은 Recorder를 거치지 않고 기본값을 쓰므로 그 버튼을 둔다.
 struct SettingsView: View {
     @AppStorage("panelSide") private var panelSide = PanelSide.right.rawValue
     @AppStorage("panelWidth") private var panelWidth = 360.0
@@ -19,11 +25,25 @@ struct SettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode = "system"
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var panelShortcut = Self.panelShortcutLabel()
+    @State private var isDefaultShortcut = Self.isPanelShortcutDefault()
 
     var body: some View {
         Form {
             KeyboardShortcuts.Recorder("패널 단축키:", name: .togglePanel) { _ in
-                panelShortcut = Self.panelShortcutLabel()
+                refreshPanelShortcut()
+            }
+            LabeledContent("") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Button("기본값 ⌥Space로 되돌리기") {
+                        KeyboardShortcuts.reset(.togglePanel)
+                        refreshPanelShortcut()
+                    }
+                    .disabled(isDefaultShortcut)
+                    Text("⌥만 조합한 단축키(⌥Space 등)는 이 macOS에서 직접 녹화할 수 없어요. ⌘·⌃가 들어간 조합은 녹화됩니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Picker("패널 위치:", selection: $panelSide) {
                 Text("오른쪽").tag(PanelSide.right.rawValue)
@@ -72,6 +92,15 @@ struct SettingsView: View {
             Text(keys).foregroundStyle(.secondary)
         }
         .font(.system(size: 12))
+    }
+
+    private func refreshPanelShortcut() {
+        panelShortcut = Self.panelShortcutLabel()
+        isDefaultShortcut = Self.isPanelShortcutDefault()
+    }
+
+    private static func isPanelShortcutDefault() -> Bool {
+        KeyboardShortcuts.getShortcut(for: .togglePanel) == KeyboardShortcuts.Name.togglePanel.defaultShortcut
     }
 
     /// Recorder가 저장한 현재 패널 단축키 표기(예: "⌥Space"). 비어 있으면 "미설정".
