@@ -470,7 +470,7 @@ security find-identity -v -p codesigning
 
 Expected: `Apple Development: ...` 또는 `Apple Distribution: ...` 항목과 괄호 안 10자리 팀 ID가 보인다. 안 보이면 Xcode → Settings → Accounts에서 Apple ID를 추가하고 인증서를 내려받는다.
 
-- [ ] **Step 2: `project.yml`의 서명 설정을 바꾼다**
+- [x] **Step 2: `project.yml`의 서명 설정을 바꾼다**
 
 `YOUR_TEAM_ID`를 Step 1에서 확인한 실제 값으로 채운다:
 
@@ -542,7 +542,7 @@ git commit -m "chore: App Store 배포용 코드사인·Hardened Runtime 설정"
 - Consumes: Task 2의 타깃 구성
 - Produces: `AppIcon` 에셋 이름 — `project.yml`의 `ASSETCATALOG_COMPILER_APPICON_NAME`이 참조한다
 
-- [ ] **Step 1: 1024×1024 원본 아이콘을 만든다**
+- [x] **Step 1: 1024×1024 원본 아이콘을 만든다**
 
 디자인 방향 — 한쪽 = '한 장의 종이'이므로 **낱장 모티프**: 한지 미색의 종이 한 장, 한쪽 가장자리에 쪽빛 획(패널이 화면 한쪽에서 나오는 것을 암시). 붓·책갈피는 폐기. 스펙 §8의 색을 그대로 쓴다: 한지 미색 바탕(`#F5F1E8` 계열), 먹빛 획, 쪽빛(`#2E5A88` 계열) 한쪽 끈 하나. macOS 26 아이콘 가이드라인상 둥근 사각형 안에 여백을 넉넉히 둔다.
 
@@ -550,7 +550,7 @@ git commit -m "chore: App Store 배포용 코드사인·Hardened Runtime 설정"
 
 > 이 단계는 디자인 작업이라 코드로 대체할 수 없다. 직접 그리거나 디자이너에게 맡긴다. 임시로 진행하려면 단색 바탕에 한쪽 끈만 있는 단순한 도형으로 시작해도 제출은 통과한다 — 다만 스토어 목록에서 첫인상을 결정하는 요소이므로 런칭 전에는 제대로 만든다.
 
-- [ ] **Step 2: 나머지 크기를 생성한다**
+- [x] **Step 2: 나머지 크기를 생성한다**
 
 ```bash
 cd Hanjjok/Resources/Assets.xcassets/AppIcon.appiconset
@@ -565,7 +565,7 @@ sips -z 32 32 icon_1024.png --out icon_16@2x.png
 cd -
 ```
 
-- [ ] **Step 3: 에셋 카탈로그 메타데이터를 쓴다**
+- [x] **Step 3: 에셋 카탈로그 메타데이터를 쓴다**
 
 `Hanjjok/Resources/Assets.xcassets/Contents.json`:
 
@@ -595,7 +595,7 @@ cd -
 }
 ```
 
-- [ ] **Step 4: `project.yml`에 에셋 카탈로그를 연결한다**
+- [x] **Step 4: `project.yml`에 에셋 카탈로그를 연결한다**
 
 `targets.Hanjjok.settings.base`에 추가:
 
@@ -603,7 +603,7 @@ cd -
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 ```
 
-- [ ] **Step 5: 빌드해서 아이콘이 붙었는지 확인한다**
+- [x] **Step 5: 빌드해서 아이콘이 붙었는지 확인한다**
 
 ```bash
 xcodegen generate
@@ -613,7 +613,7 @@ open build/Build/Products/Debug/
 
 Expected: Finder에서 `Hanjjok.app`에 새 아이콘이 보인다. (`LSUIElement`라 Dock에는 안 뜨는 게 정상이다.)
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add Hanjjok/Resources/Assets.xcassets project.yml
