@@ -28,6 +28,7 @@ targets:
       path: Hanjjok/Info.plist
       properties:
         LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
         CFBundleDisplayName: 한쪽
         NSHumanReadableCopyright: "© 2026 Joonhyuk Yoo"
         ATSApplicationFontsPath: .
