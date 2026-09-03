@@ -29,11 +29,11 @@ LOCALE = "ko"
 SUBTITLE = "화면 한쪽에 종이 한 장, 메뉴바 메모"
 PRIVACY_URL = "https://github.com/dbwnsgur741/hanjjok/blob/main/docs/privacy.md"
 SUPPORT_URL = "https://github.com/dbwnsgur741/hanjjok/issues"
-PROMO = "ㅅㅇㄷ만 쳐도 찾아지는 메모장. 메뉴바에서 ⌥Space 한 번이면 화면 한쪽에 종이 한 장이 나옵니다. 계정도, 서버도, 동기화도 없이 전부 내 Mac 안에만."
+PROMO = "ㅅㅇㄷ만 쳐도 찾아지는 메모장. 메뉴바에서 Option+Space 한 번이면 화면 한쪽에 종이 한 장이 나옵니다. 계정도, 서버도, 동기화도 없이 전부 내 Mac 안에만."
 KEYWORDS = "메모,초성검색,한글,메모장,스크래치패드,마크다운,메뉴바,빠른메모,체크리스트,노트,한지"
 DESCRIPTION = """초성으로 찾는 맥 메모장. ㅅㅇㄷ를 치면 "사이드노트"가 나오고, 사이ㄷ처럼 아직 조합 중인 글자로도 결과가 끊기지 않습니다.
 
-카카오톡 '나와의 채팅'에 메모하던 습관을 Mac 메뉴바로 옮겼습니다. ⌥Space를 누르면 화면 한쪽에서 종이 한 장이 미끄러져 나오고, 적고, Esc로 닫으면 하던 일로 돌아갑니다. 생각에서 기록까지 1초.
+카카오톡 '나와의 채팅'에 메모하던 습관을 Mac 메뉴바로 옮겼습니다. Option+Space를 누르면 화면 한쪽에서 종이 한 장이 미끄러져 나오고, 적고, Esc로 닫으면 하던 일로 돌아갑니다. 생각에서 기록까지 1초.
 
 한쪽이 하는 것
 • 초성·부분 검색 — 한글 조합 중에도 결과가 유지됩니다
@@ -49,7 +49,7 @@ DESCRIPTION = """초성으로 찾는 맥 메모장. ㅅㅇㄷ를 치면 "사이�
 • 계정, 서버, 동기화, 광고, 분석. 네트워크에 연결하지 않습니다.
 • 모든 메모는 이 Mac에만 있습니다.
 
-메뉴바 앱입니다. Dock에 아이콘이 없습니다. 메뉴바의 아이콘을 누르거나 ⌥Space(설정에서 변경 가능)로 엽니다. 로그인 시 자동 실행을 켤 수 있습니다.
+메뉴바 앱입니다. Dock에 아이콘이 없습니다. 메뉴바의 아이콘을 누르거나 Option+Space(설정에서 변경 가능)로 엽니다. 로그인 시 자동 실행을 켤 수 있습니다.
 
 macOS 14 Sonoma 이상."""
 REVIEW_NOTES = """이 앱은 메뉴바 상주 앱입니다 (LSUIElement = true). Dock에 아이콘이 나타나지 않는 것이 정상입니다.
@@ -88,7 +88,7 @@ def api(method, path, body=None, raw=False, headers=None):
     data = None if body is None else (body if raw else json.dumps(body).encode())
     req = urllib.request.Request(url, data=data, method=method)
     if not raw: req.add_header("Content-Type", "application/json")
-    req.add_header("Authorization", f"Bearer {token()}")
+    if url.startswith(API): req.add_header("Authorization", f"Bearer {token()}")  # presigned S3 URL엔 붙이면 400
     for k, v in (headers or {}).items(): req.add_header(k, v)
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
@@ -148,10 +148,10 @@ def cmd_status():
     for b in latest_build(a["id"]):
         log(f"빌드 {b['attributes']['version']} state={b['attributes']['processingState']} uploaded={b['attributes']['uploadedDate']} encryption={b['attributes'].get('usesNonExemptEncryption')}")
 
-AGE_FULL = {k: "NONE" for k in ["alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated", "medicalOrTreatmentInformation",
+_UNUSED_AGE_FULL = {k: "NONE" for k in ["alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated", "medicalOrTreatmentInformation",
     "profanityOrCrudeHumor", "sexualContentGraphicAndNudity", "sexualContentOrNudity", "horrorOrFearThemes", "matureOrSuggestiveThemes",
     "violenceCartoonOrFantasy", "violenceRealisticProlongedGraphicOrSadistic", "violenceRealistic"]}
-AGE_FULL.update({"gambling": False, "unrestrictedWebAccess": False, "lootBox": False})
+_UNUSED_AGE_FULL.update({"gambling": False, "unrestrictedWebAccess": False, "lootBox": False})
 AGE_2025 = {"advertising": False, "ageAssurance": False, "healthOrWellnessTopics": False, "messagingAndChat": False, "parentalControls": False, "userGeneratedContent": False}
 
 def cmd_metadata():
@@ -159,11 +159,16 @@ def cmd_metadata():
     api("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {"primaryCategory": rel("appCategories", "PRODUCTIVITY")}}})
     log("카테고리: 생산성")
     ar = api("GET", f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
-    for attrs in ({**AGE_FULL, **AGE_2025}, AGE_FULL):
-        try:
-            api("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}}); log("연령 등급: 전 항목 없음 (4+)"); break
-        except SystemExit as e:
-            if attrs is AGE_FULL: log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요:", str(e)[:200])
+    attrs = {}
+    for k, v in ar["attributes"].items():
+        if k == "kidsAgeBand": attrs[k] = None
+        elif isinstance(v, bool): attrs[k] = False
+        elif v is None or isinstance(v, str): attrs[k] = "NONE"
+    try:
+        api("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
+        log(f"연령 등급: {len(attrs)}개 항목 없음/false (4+)")
+    except SystemExit as e:
+        log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요\n", str(e)[:1200])
     il = app_info_loc(info["id"])
     api("PATCH", f"/v1/appInfoLocalizations/{il['id']}", {"data": {"type": "appInfoLocalizations", "id": il["id"], "attributes": {"subtitle": SUBTITLE, "privacyPolicyUrl": PRIVACY_URL}}})
     log(f"부제·개인정보 URL 설정")
