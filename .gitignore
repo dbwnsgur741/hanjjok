@@ -16,3 +16,4 @@ Hanjjok/Info.plist
 *.p8
 AuthKey_*
 tools/asc/config.local.json
+__pycache__/

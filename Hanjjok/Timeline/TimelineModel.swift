@@ -20,6 +20,18 @@ final class TimelineModel {
     /// 편집 가능해지는 버그가 있었다(QA r3 ⑤-b).
     var editingNoteID: UUID?
 
+    // MARK: - 긴 메모 접기 (v1.5)
+
+    /// "더 보기"로 펼친 카드의 id. 카드 로컬 @State로 두면 LazyVStack이 화면 밖 카드를 버렸다
+    /// 다시 만들 때 도로 접히므로 모델이 세션 동안 기억한다(디스크 저장 안 함 — 재실행 시 전부 접힘).
+    var expandedNoteIDs: Set<UUID> = []
+
+    func toggleExpanded(_ id: UUID) {
+        HanjjokTheme.motion {
+            if expandedNoteIDs.contains(id) { expandedNoteIDs.remove(id) } else { expandedNoteIDs.insert(id) }
+        }
+    }
+
     // MARK: - 검색 (Task 13)
 
     var isSearching = false
@@ -121,7 +133,12 @@ final class TimelineModel {
     func delete(_ note: Note) async {
         do {
             try await repo.delete(id: note.id)
-            HanjjokTheme.motion { notes.removeAll { $0.id == note.id } }
+            // [v1.5] 검색·태그 필터 중엔 화면이 searchResults를 보므로 양쪽에서 지운다 —
+            // 예전엔 notes만 지워 검색 중 삭제한 카드가 그대로 남아 보였다.
+            HanjjokTheme.motion {
+                notes.removeAll { $0.id == note.id }
+                searchResults.removeAll { $0.id == note.id }
+            }
             undoStack.append(note)
         } catch {
             log.error("삭제 실패: \(error)")
@@ -132,8 +149,14 @@ final class TimelineModel {
         guard let note = undoStack.popLast() else { return }
         do {
             try await repo.save(note)
-            let idx = notes.firstIndex { $0.createdAt > note.createdAt } ?? notes.endIndex
-            notes.insert(note, at: idx)
+            // [v1.5] 현재 폴더 스코프에 맞을 때만 타임라인에 되돌려 넣는다(submit/move와 같은 기준).
+            // 예전엔 무조건 끼워 넣어, 다른 폴더를 보는 중 ⌘Z를 누르면 남의 폴더 메모가 잠깐
+            // 섞여 보였다가 재로드 때 사라져 "메모가 이동했다"는 착시를 낳았다.
+            if matchesFolderFilter(note.folderId) {
+                let idx = notes.firstIndex { $0.createdAt > note.createdAt } ?? notes.endIndex
+                notes.insert(note, at: idx)
+            }
+            if isSearching || activeTag != nil { scheduleSearch() }
         } catch {
             log.error("삭제 취소 실패: \(error)")
         }
@@ -145,10 +168,19 @@ final class TimelineModel {
         updated.updatedAt = Date()
         do {
             try await repo.save(updated)
-            if let i = notes.firstIndex(where: { $0.id == note.id }) { notes[i] = updated }
+            // [v1.5] 폴더 소속(folderId)은 그대로 — 수정은 메모를 옮기지 않는다. 검색 결과 목록도
+            // 같이 갱신한다: 예전엔 notes만 바꿔 검색·태그 필터 중 수정한 카드가 옛 본문을
+            // 계속 보여줬다(저장은 됐지만 화면이 안 따라옴).
+            replaceInLists(updated)
         } catch {
             log.error("수정 실패: \(error)")
         }
+    }
+
+    /// 같은 id의 메모를 notes·searchResults 양쪽에서 교체한다(폴더 이동의 applyMoveResult와 짝).
+    private func replaceInLists(_ updated: Note) {
+        if let i = notes.firstIndex(where: { $0.id == updated.id }) { notes[i] = updated }
+        if let i = searchResults.firstIndex(where: { $0.id == updated.id }) { searchResults[i] = updated }
     }
 
     // MARK: - 폴더 이동 (Task 19)

@@ -191,18 +191,21 @@ struct TimelineView: View {
         .padding(8)
     }
 
-    /// [QA r5-C] 서식 툴바 — 굵게(⌘B)·제목·불릿·체크리스트·인용·구분선. 컴포저 카드
+    /// [QA r5-C] 서식 툴바 — 굵게·제목·불릿·체크리스트·인용·구분선. 컴포저 카드
     /// 바깥 위쪽 한 행(아이콘만, spacing 2, 좌측 정렬)에 놓아 "에디터 느낌의 채팅창"을
     /// 만들어 달라는 사용자 피드백에 대응한다. 각 버튼은 ComposerCommands를 거쳐
     /// NSTextView에 직접 반영되고(undo 등록·textDidChange 발화 보장), 액션이 끝나면
     /// ComposerCommands.restoreFocus가 포커스를 텍스트뷰로 되돌린다(그러지 않으면 버튼
     /// 클릭 후 다음 타이핑이 씹힌다).
+    /// [v1.5] ⌘B는 여기 버튼의 전역 keyboardShortcut이 아니라 HanjjokTextView(포커스된 텍스트뷰)가
+    /// 직접 처리한다 — 전역 단축키였을 땐 카드 인라인 수정 중 ⌘B가 아래 컴포저에 `**`를 넣었다.
+    /// 오른쪽 끝엔 입력 규칙 힌트를 둔다(카드 수정 푸터의 "⌘Enter 저장"과 짝 — 두 필드의 Enter
+    /// 규칙이 다르므로 화면에서 바로 읽히게).
     private var composerToolbar: some View {
         HStack(spacing: 2) {
             ComposerIconButton(systemName: "bold", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
                 composerCommands.wrapSelection(with: "**")
             }
-            .keyboardShortcut("b", modifiers: .command)
             ComposerIconButton(systemName: "textformat.size", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
                 composerCommands.togglePrefix("## ")
             }
@@ -219,11 +222,16 @@ struct TimelineView: View {
                 composerCommands.insertDivider()
             }
             Spacer(minLength: 0)
+            Text("Enter 보내기 · ⇧Enter 줄바꿈")
+                .font(HanjjokTheme.uiFont(size: 10.5))
+                .foregroundStyle(inkSoft)
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
     }
 
-    /// [QA r4 ①] 컴포저의 단일 전송 경로 — Enter(ComposerTextView.onSubmit)와 보내기 버튼
-    /// 둘 다 이걸 거친다(중복 로직 제거). 보내기 버튼은 NSTextView 포커스를 뺏지 않으므로
+    /// [QA r4 ①] 컴포저의 단일 전송 경로 — Enter·⌘Enter(ComposerTextView.onSubmit)와 보내기
+    /// 버튼 셋 다 이걸 거친다(중복 로직 제거). 보내기 버튼은 NSTextView 포커스를 뺏지 않으므로
     /// 한글 조합 중(marked)인 글자가 있으면 finalizeAndReadText가 먼저 확정해서 읽어야
     /// 전송 후 잔여 텍스트가 남거나 마지막 글자가 유실되지 않는다(QA r3 ⑤-a, Enter 경로는
     /// IME가 조합을 먼저 확정하므로 원래 정상). 저장이 실제로 성공했을 때만(model.submit()이

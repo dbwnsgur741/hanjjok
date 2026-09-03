@@ -40,6 +40,9 @@
 | 컴포저 | 13/16/15 · 필드 10×12 |
 | 커서 | 2 × 19 · jjok |
 | 줄바꿈 | keep-all (어절 유지) |
+| 긴 메모 접기 (v1.5) | 접힘 본문 200pt(≈8줄) · 접기 임계 280pt(≈11줄) · 하단 페이드 44pt(card 투명→불투명) · "더 보기/접기" Pretendard SemiBold 11 + chevron 9 |
+| 수정 푸터 (v1.5) | 힌트 Pretendard Regular 10.5 inkSoft · 버튼 Pretendard SemiBold 11, 패딩 3×9, r3 — 취소 inkSoft(호버 ink + inkSoft 8%), 저장 jjok + jjokWash(호버 jjok 26%) |
+| 입력 규칙 힌트 (v1.5) | 컴포저 툴바 우측 Pretendard Regular 10.5 inkSoft, 한 줄 말줄임 |
 
 ## 결 (그레인)
 

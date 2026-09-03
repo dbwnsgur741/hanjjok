@@ -89,6 +89,11 @@ enum HanjjokTheme {
     static let seamMarginBottom: CGFloat = 12
     static let panelHorizontalMargin: CGFloat = 16
     static let bodyLineHeightMultiple: CGFloat = 1.62
+    /// [v1.5] 긴 메모 접기 — 본문 자연 높이가 collapseThreshold(≈11줄)를 넘으면
+    /// collapsedBodyHeight(≈8줄)에서 잘라 "더 보기"를 보인다. 두 값 사이(8~11줄)는 접지
+    /// 않는다 — "더 보기"를 눌렀는데 두세 줄만 더 나오는 허탈함을 막는 히스테리시스.
+    static let collapsedBodyHeight: CGFloat = 200
+    static let collapseThreshold: CGFloat = 280
 
     // MARK: - 폰트
 

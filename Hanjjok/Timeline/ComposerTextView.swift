@@ -13,6 +13,14 @@ struct ComposerTextView: NSViewRepresentable {
     /// 줄바꿈 없이 제출로 처리한다(이름 필드는 줄바꿈이 필요 없음). 기본값 false는 기존
     /// 다중행 컴포저(메모 작성·인라인 수정) 동작을 그대로 유지한다.
     var singleLine: Bool = false
+    /// [v1.5] 일반 줄에서 Enter가 제출인가(컴포저: 카톡식 보내기) 줄바꿈인가(카드 인라인 수정:
+    /// 에디터식, 사용자 결정). false면 저장은 ⌘Enter(HanjjokTextView.onCommandReturn)·푸터
+    /// 버튼·포커스 아웃뿐이고, 빈 리스트 마커에서 Enter는 제출 대신 마커만 지운다.
+    /// 리스트 연속(ⓐ)·Shift+Enter 줄바꿈(ⓓ)은 양쪽 공통. singleLine이면 이 값과 무관하게 제출.
+    var enterSubmits: Bool = true
+    /// [v1.5] 생성 직후 first responder가 되어 캐럿을 끝에 둔다(카드 인라인 수정용). 기본 false —
+    /// 컴포저·드로어 이름 필드는 기존 포커스 경로를 그대로 쓴다.
+    var autoFocus: Bool = false
     /// [Task 24] 메인 컴포저의 체크리스트 삽입 버튼이 NSTextView를 직접 조작할 때 쓰는 브릿지.
     /// 기본값 nil이라 카드 인라인 수정(NoteCardView)·드로어 이름 필드(DrawerView)의 기존
     /// 호출부는 이 인자를 몰라도 소스 호환된다.
@@ -30,9 +38,19 @@ struct ComposerTextView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSTextView.scrollableTextView()
-        let textView = scroll.documentView as! NSTextView
+        // [v1.5] ⌘Enter·⌘B를 스스로 처리하는 서브클래스(파일 하단). scrollableTextView()는
+        // 호출한 클래스로 documentView를 만든다(실측 확인).
+        let scroll = HanjjokTextView.scrollableTextView()
+        let textView = scroll.documentView as! HanjjokTextView
         textView.delegate = context.coordinator
+        // ⌘Enter = 제출/저장(컴포저·수정 공통). 조합 중 글자는 서브클래스가 먼저 확정하므로
+        // 여기서는 확정된 문자열을 바인딩에 밀어 넣은 뒤 onSubmit을 부른다 — textDidChange는
+        // unmarkText만으로는 오지 않을 수 있어 직접 동기화한다(finalizeAndReadText와 같은 이유).
+        textView.onCommandReturn = { [weak coordinator = context.coordinator, weak textView] in
+            guard let coordinator, let textView else { return }
+            coordinator.parent.text = textView.string
+            coordinator.parent.onSubmit()
+        }
         textView.font = font
         textView.isRichText = false
         textView.allowsUndo = true
@@ -57,6 +75,14 @@ struct ComposerTextView: NSViewRepresentable {
         if !singleLine {
             textView.textStorage?.delegate = context.coordinator
             context.coordinator.textView = textView
+        }
+        if autoFocus {
+            // 창에 붙은 다음 틱에 — makeNSView 시점엔 아직 window가 nil이다.
+            DispatchQueue.main.async { [weak textView] in
+                guard let textView, let window = textView.window else { return }
+                window.makeFirstResponder(textView)
+                textView.setSelectedRange(NSRange(location: (textView.string as NSString).length, length: 0))
+            }
         }
         return scroll
     }
@@ -169,20 +195,31 @@ struct ComposerTextView: NSViewRepresentable {
                 let caretRange = textView.selectedRange()
                 let lineRange = ns.lineRange(for: caretRange)
                 let currentLine = ns.substring(with: lineRange).trimmingCharacters(in: .newlines)
+                let submits = parent.enterSubmits
 
-                // ⓑ 빈 항목에서 Enter = 마커 줄 삭제 후 제출(리스트 끝내고 전송). insertText가
-                // textDidChange를 동기 발화해 draft가 갱신된 뒤 — 그 순서 그대로 — onSubmit이
+                // ⓑ 빈 항목에서 Enter = 리스트 종료. 컴포저(enterSubmits)는 마커 줄을 지우고
+                // 제출하고, 수정 모드는 마커만 지워 그 줄에 캐럿을 남긴다(제출 아님). insertText가
+                // textDidChange를 동기 발화해 바인딩이 갱신된 뒤 — 그 순서 그대로 — onSubmit이
                 // 실행돼야 한다(순서 뒤집으면 옛 마커 줄이 저장됨).
                 func endItem() -> Bool {
-                    textView.insertText("", replacementRange: lineRange)
+                    if submits {
+                        textView.insertText("", replacementRange: lineRange)
+                        parent.onSubmit()
+                    } else {
+                        var markerRange = lineRange
+                        if ns.substring(with: lineRange).hasSuffix("\n") { markerRange.length -= 1 }
+                        textView.insertText("", replacementRange: markerRange)
+                    }
+                    return true
+                }
+                // ⓒ 일반 줄에서 Enter — 컴포저는 제출(카톡식 유지), 수정 모드는 줄바꿈(v1.5, 에디터식).
+                func plainEnter() -> Bool {
+                    guard submits else { return false }
                     parent.onSubmit()
                     return true
                 }
 
-                guard let block = MarkdownParser.blocks(in: currentLine).first else {
-                    parent.onSubmit()
-                    return true
-                }
+                guard let block = MarkdownParser.blocks(in: currentLine).first else { return plainEnter() }
                 switch block {
                 case .checklist(let item):
                     if item.text.isEmpty { return endItem() }
@@ -202,9 +239,7 @@ struct ComposerTextView: NSViewRepresentable {
                     // MarkdownParser.bulletRegex는 본문 없는 "- "/"* "를 의도적으로 문단으로
                     // 분류한다 — 그 종료 신호만 여기서 직접 잡는다.
                     if currentLine == "- " || currentLine == "* " { return endItem() }
-                    // ⓒ 일반 줄에서 Enter = 제출(카톡식 유지).
-                    parent.onSubmit()
-                    return true
+                    return plainEnter()
                 }
             }
             return false
@@ -260,6 +295,13 @@ final class ComposerCommands {
     /// 벗긴다(토글).
     func wrapSelection(with marker: String) {
         guard let textView else { return }
+        Self.wrapSelection(in: textView, with: marker)
+        restoreFocus()
+    }
+
+    /// [v1.5] 감싸기 본체 — 인스턴스 없이도 쓰도록 분리. HanjjokTextView가 ⌘B를 직접 처리할 때
+    /// 이걸 부른다(툴바 버튼과 같은 규칙, 로직 중복 없음).
+    static func wrapSelection(in textView: NSTextView, with marker: String) {
         let ns = textView.string as NSString
         let selRange = textView.selectedRange()
         let markerLen = (marker as NSString).length
@@ -281,7 +323,6 @@ final class ComposerCommands {
             textView.setSelectedRange(NSRange(location: selRange.location + markerLen,
                                                length: (selected as NSString).length))
         }
-        restoreFocus()
     }
 
     /// [QA r5-C] 캐럿 줄 아래에 구분선(`"---"`) 줄을 넣는다 — 현재 줄이 개행으로 끝나지
@@ -447,5 +488,45 @@ private enum ComposerSyntaxHighlighter {
     private static func applyTrait(_ trait: NSFontTraitMask, range: NSRange, storage: NSTextStorage, baseFont: NSFont) {
         let current = (storage.attribute(.font, at: range.location, effectiveRange: nil) as? NSFont) ?? baseFont
         storage.addAttribute(.font, value: NSFontManager.shared.convert(current, toHaveTrait: trait), range: range)
+    }
+}
+
+/// [v1.5] ⌘Enter(제출/저장)·⌘B(굵게)를 텍스트뷰 자신이 처리한다. 예전엔 ⌘B가 SwiftUI 툴바
+/// 버튼의 전역 keyboardShortcut이라 카드 인라인 수정 중에 눌러도 아래 컴포저에 `**`가
+/// 들어갔다(실사용 버그). first responder인 이 뷰가 먼저 받으면 "지금 타이핑 중인 필드"에만
+/// 적용된다. performKeyEquivalent와 keyDown 양쪽에서 잡는다 — 창의 키 이퀴벌런트 순회가 이
+/// 뷰까지 오지 않는 경우에도 keyDown은 first responder에 반드시 도착한다(먼저 온 쪽이 소비하고
+/// 이벤트는 하나뿐이라 이중 처리는 없다).
+final class HanjjokTextView: NSTextView {
+    /// ⌘Enter. nil이면 처리하지 않고 기본 동작에 맡긴다.
+    var onCommandReturn: (() -> Void)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // 창의 키 이퀴벌런트 순회는 포커스와 무관하게 계층의 모든 뷰를 방문한다 — first responder일
+        // 때만 잡아야 컴포저에서 친 ⌘Enter/⌘B를 화면에 떠 있는 카드 수정 필드가 가로채지 않는다.
+        if window?.firstResponder === self, handleCommandKey(event) { return true }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if handleCommandKey(event) { return }
+        super.keyDown(with: event)
+    }
+
+    private func handleCommandKey(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags.contains(.command), !flags.contains(.control), !flags.contains(.option) else { return false }
+        switch event.keyCode {
+        case 36, 76:  // Return · 키패드 Enter
+            guard let onCommandReturn else { return false }
+            // 한글 조합 중이면 먼저 확정한다 — 컴포저 보내기 버튼(finalizeAndReadText)과 같은 이유.
+            if hasMarkedText() { unmarkText() }
+            onCommandReturn()
+            return true
+        default:
+            guard !flags.contains(.shift), event.charactersIgnoringModifiers?.lowercased() == "b" else { return false }
+            ComposerCommands.wrapSelection(in: self, with: "**")
+            return true
+        }
     }
 }

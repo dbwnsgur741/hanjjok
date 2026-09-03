@@ -7,6 +7,10 @@ import Domain
 /// (스펙 §8 ⑫) — 이 뷰가 checklistBody를 대체해 모든 블록 타입을 렌더링한다.
 /// 체크박스는 원형(Circle)이다 — 사용자 지시(QA r5): "`[ ]` 말고 그냥 동그라미로".
 /// 저장되는 마크다운 문법 자체(`- [ ] `)는 그대로 두고, 그리는 모양만 원으로 바꾼다.
+/// [v1.5] 본문 Text에 `.textSelection(.enabled)`를 걸지 않는다 — 선택 가능한 Text는 AppKit
+/// 텍스트 뷰가 마우스를 먼저 소비해 카드의 더블클릭(수정 진입)이 텍스트 위에서는 절대
+/// 발화하지 않았다(실측: 단어만 선택됨). 복사는 우클릭 "복사"(카드 전체)나 수정 모드 안의
+/// 선택으로 한다.
 struct MarkdownBody: View {
     let content: String
     /// 체크박스 탭 → 호출부(NoteCardView)가 `ChecklistParser.toggling`으로 content를 갱신한다.
@@ -64,7 +68,6 @@ struct MarkdownBody: View {
         Text(inline(text))
             .font(HanjjokTheme.bodyBoldFont(size: headingSize(level)))
             .lineSpacing((HanjjokTheme.bodyLineHeightMultiple - 1) * headingSize(level))
-            .textSelection(.enabled)
             .padding(.top, isFirst ? 0 : 6)
             .padding(.bottom, 2)
     }
@@ -104,6 +107,9 @@ struct MarkdownBody: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // [v1.5] 더블클릭은 카드 수정 진입 제스처라 체크박스 위에서는 삼킨다 — 연타로
+            // 토글 두 번 + 수정 모드 진입이 겹치는 사고 방지(자식 제스처 우선).
+            .onTapGesture(count: 2) {}
             .padding(.top, 2.5)
 
             Text(inline(item.text))
@@ -111,7 +117,6 @@ struct MarkdownBody: View {
                 .lineSpacing(bodyLineSpacing)
                 .strikethrough(item.isChecked)
                 .foregroundStyle(item.isChecked ? inkSoft : ink)
-                .textSelection(.enabled)
         }
     }
 
@@ -126,7 +131,6 @@ struct MarkdownBody: View {
             Text(inline(text))
                 .font(HanjjokTheme.bodyFont())
                 .lineSpacing(bodyLineSpacing)
-                .textSelection(.enabled)
         }
         .padding(.leading, 2)
     }
@@ -142,7 +146,6 @@ struct MarkdownBody: View {
                 .font(HanjjokTheme.bodyFont())
                 .lineSpacing(bodyLineSpacing)
                 .foregroundStyle(inkSoft)
-                .textSelection(.enabled)
                 .padding(.leading, 9)
         }
     }
@@ -159,7 +162,6 @@ struct MarkdownBody: View {
             Text(inline(text))
                 .font(HanjjokTheme.bodyFont())
                 .lineSpacing(bodyLineSpacing)
-                .textSelection(.enabled)
         }
     }
 
