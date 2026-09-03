@@ -6,6 +6,8 @@
 
 > Mac App Store 출시 준비 중. 무료.
 
+![한쪽 — 초성으로 찾는 맥 메모장](docs/screenshots/01-timeline-light.png)
+
 ## 하는 것
 
 - **초성·부분 검색** — 한글 조합 중에도 결과가 유지됩니다 (자모 분해 인덱싱)
@@ -45,7 +47,8 @@ Hanjjok/           앱 타깃 — SwiftUI 뷰, @Observable 뷰모델, 에셋
 Packages/Domain    순수 Swift — 파서·인덱서·검색 질의 (프레임워크 import 없음)
 Packages/Data      GRDB(SQLite) 저장소 구현
 Packages/PanelKit  AppKit 격리 — NSPanel, 메뉴바
-docs/              스펙·계획서·QA 체크리스트
+docs/              스펙·계획서·QA 체크리스트·스토어 스크린샷
+tools/screenshots  스토어 스크린샷 생성 도구 (DEBUG 스냅샷 훅 + 시드 + 합성)
 ```
 
 ## 서드파티

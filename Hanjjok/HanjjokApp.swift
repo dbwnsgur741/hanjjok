@@ -22,6 +22,7 @@ struct HanjjokApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private(set) var panelController: EdgePanelController!
+    private var hostView: NSView?
     // Task 14의 내보내기가 사용
     private(set) var repo: GRDBNoteRepository!
     private(set) var model: TimelineModel!
@@ -58,7 +59,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // panelController는 이 줄 다음에 할당되지만, 클로저는 Esc 시점에 지연 평가되므로 안전하다.
                 onRequestHide: { [weak self] in self?.panelController.hide() }))
         panelController = EdgePanelController(contentView: host, side: side, width: width)
+        hostView = host
         applyAppearance()
+        #if DEBUG
+        installSnapshotHookIfRequested()
+        #endif
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
@@ -179,4 +184,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
     }
+    #if DEBUG
+    // 스토어 스크린샷용 개발 훅. HANJJOK_SNAPSHOT_DIR 환경변수로 실행했을 때만 활성.
+    // <dir>/snap.req 에 이름을 쓰면 패널 뷰 계층을 2x 비트맵으로 렌더해 <dir>/<이름>.png 로 저장한다.
+    // 화면 기록 권한·디스플레이 배율과 무관하며 배경 없이 패널만(알파) 나온다. 릴리스 빌드에는 포함되지 않는다.
+    private var snapshotTimer: Timer?
+    private func installSnapshotHookIfRequested() {
+        guard let dir = ProcessInfo.processInfo.environment["HANJJOK_SNAPSHOT_DIR"] else { return }
+        let base = URL(fileURLWithPath: dir)
+        snapshotTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+            let req = base.appendingPathComponent("snap.req")
+            guard let raw = try? String(contentsOf: req, encoding: .utf8), let view = self?.hostView else { return }
+            let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            let b = view.bounds
+            guard b.width > 0, b.height > 0,
+                  let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(b.width * 2), pixelsHigh: Int(b.height * 2),
+                                             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return }
+            rep.size = b.size
+            view.cacheDisplay(in: b, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: base.appendingPathComponent("\(name).png"))
+            try? FileManager.default.removeItem(at: req)
+        }
+    }
+    #endif
 }
