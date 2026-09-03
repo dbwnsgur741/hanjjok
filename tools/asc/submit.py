@@ -15,6 +15,7 @@
   submit.py price               무료(가격 스케줄 base territory KOR)
   submit.py build               처리 완료된 최신 빌드를 버전에 연결 + 암호화 면제 표시
   submit.py review              심사 연락처·메모
+  submit.py finalize            저작권·제3자 콘텐츠·앱 개인정보(수집 안 함) 게시
   submit.py submit              심사 제출
   submit.py all                 위 전부 순서대로 (submit 제외)
 """
@@ -241,6 +242,27 @@ def cmd_review():
     else: api("POST", "/v1/appStoreReviewDetails", {"data": {"type": "appStoreReviewDetails", "attributes": attrs, "relationships": {"appStoreVersion": rel("appStoreVersions", v["id"])}}})
     log("심사 연락처·메모 설정")
 
+def cmd_finalize():
+    """제출 직전 필수 항목: 저작권, 제3자 콘텐츠 선언, 앱 개인정보(데이터 수집 안 함) 게시."""
+    a = app(); v = version(a["id"], create=True)
+    api("PATCH", f"/v1/appStoreVersions/{v['id']}", {"data": {"type": "appStoreVersions", "id": v["id"], "attributes": {"copyright": "© 2026 Joonhyuk Yoo"}}})
+    log("저작권 설정")
+    api("PATCH", f"/v1/apps/{a['id']}", {"data": {"type": "apps", "id": a["id"], "attributes": {"contentRightsDeclaration": "DOES_NOT_USE_THIRD_PARTY_CONTENT"}}})
+    log("제3자 콘텐츠: 사용 안 함")
+    # 앱 개인정보 — 비공개 엔드포인트(fastlane deliver 와 동일 경로). 실패 시 UI에서 '데이터를 수집하지 않음' 선택.
+    try:
+        ex = api("GET", f"/v1/apps/{a['id']}/dataUsages?limit=200").get("data", [])
+        if not any(((d.get("relationships") or {}).get("dataProtection") or {}).get("data", {}).get("id") == "DATA_NOT_COLLECTED" for d in ex):
+            for d in ex: api("DELETE", f"/v1/appDataUsages/{d['id']}")
+            api("POST", "/v1/appDataUsages", {"data": {"type": "appDataUsages", "relationships": {"app": rel("apps", a["id"]),
+                "dataProtection": rel("appDataUsageDataProtections", "DATA_NOT_COLLECTED")}}})
+        ps = api("GET", f"/v1/apps/{a['id']}/dataUsagePublishState")["data"]
+        if not ps["attributes"].get("published"):
+            api("PATCH", f"/v1/appDataUsagesPublishStates/{ps['id']}", {"data": {"type": "appDataUsagesPublishStates", "id": ps["id"], "attributes": {"published": True}}})
+        log("앱 개인정보: 데이터를 수집하지 않음 (게시됨)")
+    except SystemExit as e:
+        log("⚠️ 앱 개인정보 API 실패 — App Store Connect → 앱 개인정보에서 '데이터를 수집하지 않음' 선택 필요\n", str(e)[:800])
+
 def cmd_submit():
     a = app(); v = version(a["id"])
     rs = api("POST", "/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "MAC_OS"}, "relationships": {"app": rel("apps", a["id"])}}})["data"]
@@ -251,8 +273,8 @@ def cmd_submit():
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     steps = {"status": cmd_status, "metadata": cmd_metadata, "screenshots": lambda: cmd_screenshots(sys.argv[2] if len(sys.argv) > 2 else None),
-             "price": cmd_price, "build": cmd_build, "review": cmd_review, "submit": cmd_submit}
+             "price": cmd_price, "build": cmd_build, "review": cmd_review, "finalize": cmd_finalize, "submit": cmd_submit}
     if cmd == "all":
-        for s in ("metadata", "screenshots", "price", "build", "review"): log(f"\n== {s} =="); steps[s]()
+        for s in ("metadata", "screenshots", "price", "build", "review", "finalize"): log(f"\n== {s} =="); steps[s]()
         log("\n== status =="); cmd_status()
     else: steps[cmd]()
