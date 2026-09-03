@@ -159,32 +159,27 @@ def cmd_metadata():
     api("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {"primaryCategory": rel("appCategories", "PRODUCTIVITY")}}})
     log("카테고리: 생산성")
     ar = api("GET", f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
-    cur = ar["attributes"]; log("연령 등급 현재 키:", ", ".join(f"{k}={v!r}" for k, v in cur.items()))
-    ENUM = {"alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated", "medicalOrTreatmentInformation", "profanityOrCrudeHumor",
-            "sexualContentGraphicAndNudity", "sexualContentOrNudity", "horrorOrFearThemes", "matureOrSuggestiveThemes",
-            "violenceCartoonOrFantasy", "violenceRealisticProlongedGraphicOrSadistic", "violenceRealistic", "ageRatingOverride", "koreaAgeRatingOverride"}
+    cur = ar["attributes"]
     BOOL = {"gambling", "unrestrictedWebAccess", "lootBox", "advertising", "ageAssurance", "healthOrWellnessTopics",
-            "messagingAndChat", "parentalControls", "userGeneratedContent"}
-    attrs = {}
-    for k in cur:
-        if k in ENUM: attrs[k] = "NONE"
-        elif k in BOOL: attrs[k] = False
-        elif k == "kidsAgeBand": attrs[k] = None
-        # 그 외(developerAgeRatingInfoUrl, seventeenPlus, 읽기전용 등)는 보내지 않는다
-    import re as _re
-    for attempt in range(6):
+            "messagingAndChat", "parentalControls", "userGeneratedContent", "socialMedia", "socialMediaAgeRestricted"}
+    SKIP = {"developerAgeRatingInfoUrl", "ageRatingOverride", "ageRatingOverrideV2", "koreaAgeRatingOverride", "seventeenPlus"}
+    attrs = {k: (None if k == "kidsAgeBand" else False if k in BOOL else "NONE") for k in cur if k not in SKIP}
+    for attempt in range(8):
         try:
             api("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
             log(f"연령 등급: {len(attrs)}개 항목 설정 (4+)"); break
         except SystemExit as e:
             msg = str(e); changed = False
-            for blk in _re.findall(r'\{[^{}]*"detail"[^{}]*"pointer"[^{}]*\}', msg):
-                km = _re.search(r'/data/attributes/([A-Za-z]+)', blk)
-                if not km: continue
-                k = km.group(1)
-                if "Expected a BOOLEAN" in blk: attrs[k] = False; changed = True
-                elif "Expected a STRING" in blk or "REQUIRED" in blk and k not in attrs: attrs[k] = "NONE"; changed = True
-                elif k in attrs: attrs.pop(k); changed = True
+            try: errs = json.loads(msg.split("\n", 1)[1])["errors"]
+            except Exception: errs = []
+            for err in errs:
+                k = (err.get("source", {}).get("pointer") or "").rsplit("/", 1)[-1]; d = err.get("detail", ""); c = err.get("code", "")
+                if not k: continue
+                if "Expected a BOOLEAN" in d: attrs[k] = False
+                elif "Expected a STRING" in d: attrs[k] = "NONE"
+                elif "REQUIRED" in c: attrs[k] = False if k in BOOL else "NONE"
+                else: attrs.pop(k, None)
+                changed = True
             if not changed: log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요\n", msg[:2000]); break
     il = app_info_loc(info["id"])
     api("PATCH", f"/v1/appInfoLocalizations/{il['id']}", {"data": {"type": "appInfoLocalizations", "id": il["id"], "attributes": {"subtitle": SUBTITLE, "privacyPolicyUrl": PRIVACY_URL}}})
