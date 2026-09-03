@@ -159,16 +159,27 @@ def cmd_metadata():
     api("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {"primaryCategory": rel("appCategories", "PRODUCTIVITY")}}})
     log("카테고리: 생산성")
     ar = api("GET", f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
+    BOOL_KEYS = {"gambling", "unrestrictedWebAccess", "lootBox", "advertising", "ageAssurance", "healthOrWellnessTopics",
+                 "messagingAndChat", "parentalControls", "userGeneratedContent", "seventeenPlus"}
     attrs = {}
     for k, v in ar["attributes"].items():
         if k == "kidsAgeBand": attrs[k] = None
-        elif isinstance(v, bool): attrs[k] = False
-        elif v is None or isinstance(v, str): attrs[k] = "NONE"
-    try:
-        api("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
-        log(f"연령 등급: {len(attrs)}개 항목 없음/false (4+)")
-    except SystemExit as e:
-        log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요\n", str(e)[:1200])
+        elif k in BOOL_KEYS or isinstance(v, bool): attrs[k] = False
+        else: attrs[k] = "NONE"
+    import re as _re
+    for attempt in range(6):  # 에러 응답을 읽어 타입 교정·읽기전용 키 제거하며 재시도
+        try:
+            api("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
+            log(f"연령 등급: {len(attrs)}개 항목 없음/false (4+)"); break
+        except SystemExit as e:
+            msg = str(e); changed = False
+            for m in _re.finditer(r"Expected a BOOLEAN[^\n]*?attribute '([A-Za-z]+)'|attribute '([A-Za-z]+)'\. Expected a BOOLEAN", msg):
+                k = m.group(1) or m.group(2); attrs[k] = False; changed = True
+            for m in _re.finditer(r'"pointer" : "/data/attributes/([A-Za-z]+)"', msg):
+                k = m.group(1)
+                if k in attrs and attrs[k] == "NONE" and ("BOOLEAN" in msg): attrs[k] = False; changed = True
+                elif k in attrs and ("not allowed" in msg.lower() or "read-only" in msg.lower() or "unknown" in msg.lower()): attrs.pop(k, None); changed = True
+            if not changed: log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요\n", msg[:1500]); break
     il = app_info_loc(info["id"])
     api("PATCH", f"/v1/appInfoLocalizations/{il['id']}", {"data": {"type": "appInfoLocalizations", "id": il["id"], "attributes": {"subtitle": SUBTITLE, "privacyPolicyUrl": PRIVACY_URL}}})
     log(f"부제·개인정보 URL 설정")
