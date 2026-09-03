@@ -57,9 +57,9 @@ macOS 14 Sonoma 이상.
 
 | 항목 | 값 |
 |---|---|
-| 개인정보처리방침 URL (필수) | `https://dbwnsgur123.github.io/hanjjok/privacy.html` |
-| 지원 URL (필수) | `https://github.com/dbwnsgur123/hanjjok/issues` |
-| 마케팅 URL (선택) | `https://dbwnsgur123.github.io/hanjjok/` (hanjjok.app 등록 후 교체) |
+| 개인정보처리방침 URL (필수) | `https://dbwnsgur741.github.io/hanjjok/privacy.html` |
+| 지원 URL (필수) | `https://github.com/dbwnsgur741/hanjjok/issues` |
+| 마케팅 URL (선택) | `https://dbwnsgur741.github.io/hanjjok/` (hanjjok.app 등록 후 교체) |
 
 ## 앱 개인정보 (App Privacy)
 
