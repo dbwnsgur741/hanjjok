@@ -48,12 +48,16 @@ open build/Build/Products/Debug/Hanjjok.app
 
 ## Task 0: 외부 선행 조건 (코드 아님 — 사람이 처리)
 
+> **✅ 2026-09-03 심사 제출 완료.** 버전 1.0 (빌드 1) `WAITING_FOR_REVIEW`. 앱 이름 "한쪽: 초성으로 찾는 메모장".
+> 미완: 도메인(`hanjjok.app`/`.kr`) 미등록 — 개인정보처리방침·지원 URL은 GitHub 저장소 주소로 제출함.
+> 제출 자동화는 `tools/asc/submit.py`. 이후 업데이트는 `metadata → screenshots → build → finalize → submit`.
+
 이 항목들은 코드 작업과 병렬로 진행 가능하지만, **Task 5(코드사인) 전까지 1·2번이 완료되어야 한다.**
 
-- [ ] **Apple Developer Program 가입** — 연 $99. 무료 앱이어도 필수. 개인/사업자 선택 시 사업자는 D-U-N-S 번호가 필요해 2~4주 걸리므로, 빠르게 가려면 개인 명의로 등록한다
+- [x] **Apple Developer Program 가입** — 연 $99. 무료 앱이어도 필수. 개인/사업자 선택 시 사업자는 D-U-N-S 번호가 필요해 2~4주 걸리므로, 빠르게 가려면 개인 명의로 등록한다
 - [ ] **도메인 등록** — `hanjjok.app`, `hanjjok.kr` (`.com`은 선점됨)
-- [ ] **App Store Connect에서 앱 이름 "한쪽" 선점** — 레코드 생성만으로 180일간 확보된다. 번들 ID `kr.hurdlers.Hanjjok` 등록은 **Task 2 완료 후**에 할 것 (한 번 만들면 못 바꾼다)
-- [ ] **개인정보처리방침 페이지 게시** — `hanjjok.app/privacy`. 내용은 한 문단이면 충분하다: "한쪽은 어떠한 데이터도 수집·전송하지 않습니다. 모든 메모는 사용자의 Mac에만 저장되며 네트워크 통신을 하지 않습니다." App Store Connect 제출 시 URL 입력란이 필수다
+- [x] **App Store Connect에서 앱 이름 "한쪽" 선점** — 레코드 생성만으로 180일간 확보된다. 번들 ID `kr.hurdlers.Hanjjok` 등록은 **Task 2 완료 후**에 할 것 (한 번 만들면 못 바꾼다)
+- [x] **개인정보처리방침 페이지 게시** — `hanjjok.app/privacy`. 내용은 한 문단이면 충분하다: "한쪽은 어떠한 데이터도 수집·전송하지 않습니다. 모든 메모는 사용자의 Mac에만 저장되며 네트워크 통신을 하지 않습니다." App Store Connect 제출 시 URL 입력란이 필수다
 
 ---
 
@@ -462,7 +466,7 @@ Expected: 기존 메모가 타임라인에 전부 보인다. 검색(초성 포�
 - Consumes: Task 3의 entitlements, Task 2의 번들 ID
 - Produces: App Store Connect 업로드 가능한 `.pkg` 아카이브
 
-- [ ] **Step 1: 팀 ID를 확인한다**
+- [x] **Step 1: 팀 ID를 확인한다**
 
 ```bash
 security find-identity -v -p codesigning
@@ -497,7 +501,7 @@ Expected: `Apple Development: ...` 또는 `Apple Distribution: ...` 항목과 �
 
 > Hardened Runtime은 App Store 제출의 필수 요건은 아니지만(샌드박스가 그 역할), 켜두면 나중에 웹 직접 배포(Developer ID + 공증)로 확장할 때 그대로 쓸 수 있다. 이 앱은 JIT·동적 코드 로딩을 안 하므로 예외 entitlement 없이 켜져야 정상이다.
 
-- [ ] **Step 3: 릴리스 아카이브를 만든다**
+- [x] **Step 3: 릴리스 아카이브를 만든다**
 
 ```bash
 xcodegen generate
@@ -507,7 +511,7 @@ xcodebuild -project Hanjjok.xcodeproj -scheme Hanjjok -configuration Release \
 
 Expected: `ARCHIVE SUCCEEDED`. 실패하면 대개 프로비저닝 프로파일 문제이므로 Xcode로 프로젝트를 열어 Signing & Capabilities 탭의 경고를 읽는다.
 
-- [ ] **Step 4: 아카이브의 서명과 entitlements를 검증한다**
+- [x] **Step 4: 아카이브의 서명과 entitlements를 검증한다**
 
 ```bash
 codesign -dv --entitlements - build/Hanjjok.xcarchive/Products/Applications/Hanjjok.app 2>&1 | head -30
@@ -515,7 +519,7 @@ codesign -dv --entitlements - build/Hanjjok.xcarchive/Products/Applications/Hanj
 
 Expected: `Authority=Apple Distribution: ...`, entitlements에 `app-sandbox = true`, `Identifier=kr.hurdlers.Hanjjok`.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add project.yml
@@ -654,17 +658,17 @@ git commit -m "docs: 스펙 v1.4 — 한쪽 리브랜딩 및 App Store 배포 �
 
 Task 1~7 완료 후, App Store Connect에서 처리한다.
 
-- [ ] **개인정보 라벨** — 전 항목 "데이터를 수집하지 않음". 네트워크 코드가 없으므로 사실 그대로다
-- [ ] **개인정보처리방침 URL** — `hanjjok.app/privacy` (Task 0에서 게시)
-- [ ] **스크린샷** — Mac용 1280×800 이상. 최소 1장, 권장 4~5장. 한지 라이트/먹 다크 양쪽을 보여준다. **초성 검색 장면을 반드시 포함** — 이게 유일한 차별점이다
-- [ ] **앱 설명** — 첫 두 줄이 목록에서 잘리지 않고 보이는 전부다. "초성으로 찾는 맥 메모장" 같은 훅을 맨 앞에 둔다
-- [ ] **키워드** — 메모, 초성검색, 한글, 스크래치패드, 마크다운, 메뉴바
-- [ ] **카테고리** — 생산성
-- [ ] **연령 등급** — 4+
-- [ ] **판매 지역** — 전 지역 허용. UI가 한국어라 실질 사용자는 한국이지만, 막을 이유가 없다
-- [ ] **저작권 표기** — `NSHumanReadableCopyright`가 현재 빈 문자열이다. `© 2026 <이름>` 형태로 채운다
-- [ ] **폰트 라이선스 고지** — OFL은 라이선스 사본 동봉을 요구한다. `Resources/Fonts/LICENSE.txt`가 번들에 포함되는지 확인하고, 설정 창에도 "오픈소스 라이선스" 항목을 두면 더 안전하다
-- [ ] **심사 메모** — 리뷰어에게 남긴다: "메뉴바 상주 앱입니다(LSUIElement). Dock 아이콘이 없으며, 메뉴바의 아이콘을 클릭하거나 ⌥Space를 눌러 실행합니다." **이 메모가 없으면 '앱이 실행되지 않는다'는 사유로 반려될 수 있다** — 메뉴바 앱의 가장 흔한 반려 원인이다
+- [x] **개인정보 라벨** — 전 항목 "데이터를 수집하지 않음". 네트워크 코드가 없으므로 사실 그대로다
+- [x] **개인정보처리방침 URL** — `hanjjok.app/privacy` (Task 0에서 게시)
+- [x] **스크린샷** — Mac용 1280×800 이상. 최소 1장, 권장 4~5장. 한지 라이트/먹 다크 양쪽을 보여준다. **초성 검색 장면을 반드시 포함** — 이게 유일한 차별점이다
+- [x] **앱 설명** — 첫 두 줄이 목록에서 잘리지 않고 보이는 전부다. "초성으로 찾는 맥 메모장" 같은 훅을 맨 앞에 둔다
+- [x] **키워드** — 메모, 초성검색, 한글, 스크래치패드, 마크다운, 메뉴바
+- [x] **카테고리** — 생산성
+- [x] **연령 등급** — 4+
+- [x] **판매 지역** — 전 지역 허용. UI가 한국어라 실질 사용자는 한국이지만, 막을 이유가 없다
+- [x] **저작권 표기** — `NSHumanReadableCopyright`가 현재 빈 문자열이다. `© 2026 <이름>` 형태로 채운다
+- [x] **폰트 라이선스 고지** — OFL은 라이선스 사본 동봉을 요구한다. `Resources/Fonts/LICENSE.txt`가 번들에 포함되는지 확인하고, 설정 창에도 "오픈소스 라이선스" 항목을 두면 더 안전하다
+- [x] **심사 메모** — 리뷰어에게 남긴다: "메뉴바 상주 앱입니다(LSUIElement). Dock 아이콘이 없으며, 메뉴바의 아이콘을 클릭하거나 ⌥Space를 눌러 실행합니다." **이 메모가 없으면 '앱이 실행되지 않는다'는 사유로 반려될 수 있다** — 메뉴바 앱의 가장 흔한 반려 원인이다
 
 ---
 
