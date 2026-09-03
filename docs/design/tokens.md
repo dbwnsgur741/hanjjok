@@ -47,7 +47,7 @@
 
 **기술 사양:**
 - **소스**: 512×512 PNG 알파 노이즈 타일 (RGB는 흰색)
-- **에셋 경로**: `Hanji/Resources/Textures/HanjiGrain.png`
+- **에셋 경로**: `Hanjjok/Resources/Textures/PaperGrain.png`
 - **배치**: 256pt 타일로 반복 (@2x 화면에서 512px 소스)
 - **마스킹**: 잉크색으로 마스킹 후 불투명도 적용
 - **레이어 순서** (맨 아래부터):
