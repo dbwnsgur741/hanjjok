@@ -96,7 +96,7 @@ def api(method, path, body=None, raw=False, headers=None):
             return json.loads(txt) if txt and not raw else {}
     except urllib.error.HTTPError as e:
         err = e.read().decode(errors="replace")
-        raise SystemExit(f"HTTP {e.code} {method} {path}\n{err[:1500]}")
+        raise SystemExit(f"HTTP {e.code} {method} {path}\n{err[:6000]}")
 
 def rel(t, i): return {"data": {"type": t, "id": i}}
 def log(*a): print(*a, flush=True)
@@ -159,27 +159,33 @@ def cmd_metadata():
     api("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {"primaryCategory": rel("appCategories", "PRODUCTIVITY")}}})
     log("카테고리: 생산성")
     ar = api("GET", f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
-    BOOL_KEYS = {"gambling", "unrestrictedWebAccess", "lootBox", "advertising", "ageAssurance", "healthOrWellnessTopics",
-                 "messagingAndChat", "parentalControls", "userGeneratedContent", "seventeenPlus"}
+    cur = ar["attributes"]; log("연령 등급 현재 키:", ", ".join(f"{k}={v!r}" for k, v in cur.items()))
+    ENUM = {"alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated", "medicalOrTreatmentInformation", "profanityOrCrudeHumor",
+            "sexualContentGraphicAndNudity", "sexualContentOrNudity", "horrorOrFearThemes", "matureOrSuggestiveThemes",
+            "violenceCartoonOrFantasy", "violenceRealisticProlongedGraphicOrSadistic", "violenceRealistic", "ageRatingOverride", "koreaAgeRatingOverride"}
+    BOOL = {"gambling", "unrestrictedWebAccess", "lootBox", "advertising", "ageAssurance", "healthOrWellnessTopics",
+            "messagingAndChat", "parentalControls", "userGeneratedContent"}
     attrs = {}
-    for k, v in ar["attributes"].items():
-        if k == "kidsAgeBand": attrs[k] = None
-        elif k in BOOL_KEYS or isinstance(v, bool): attrs[k] = False
-        else: attrs[k] = "NONE"
+    for k in cur:
+        if k in ENUM: attrs[k] = "NONE"
+        elif k in BOOL: attrs[k] = False
+        elif k == "kidsAgeBand": attrs[k] = None
+        # 그 외(developerAgeRatingInfoUrl, seventeenPlus, 읽기전용 등)는 보내지 않는다
     import re as _re
-    for attempt in range(6):  # 에러 응답을 읽어 타입 교정·읽기전용 키 제거하며 재시도
+    for attempt in range(6):
         try:
             api("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
-            log(f"연령 등급: {len(attrs)}개 항목 없음/false (4+)"); break
+            log(f"연령 등급: {len(attrs)}개 항목 설정 (4+)"); break
         except SystemExit as e:
             msg = str(e); changed = False
-            for m in _re.finditer(r"Expected a BOOLEAN[^\n]*?attribute '([A-Za-z]+)'|attribute '([A-Za-z]+)'\. Expected a BOOLEAN", msg):
-                k = m.group(1) or m.group(2); attrs[k] = False; changed = True
-            for m in _re.finditer(r'"pointer" : "/data/attributes/([A-Za-z]+)"', msg):
-                k = m.group(1)
-                if k in attrs and attrs[k] == "NONE" and ("BOOLEAN" in msg): attrs[k] = False; changed = True
-                elif k in attrs and ("not allowed" in msg.lower() or "read-only" in msg.lower() or "unknown" in msg.lower()): attrs.pop(k, None); changed = True
-            if not changed: log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요\n", msg[:1500]); break
+            for blk in _re.findall(r'\{[^{}]*"detail"[^{}]*"pointer"[^{}]*\}', msg):
+                km = _re.search(r'/data/attributes/([A-Za-z]+)', blk)
+                if not km: continue
+                k = km.group(1)
+                if "Expected a BOOLEAN" in blk: attrs[k] = False; changed = True
+                elif "Expected a STRING" in blk or "REQUIRED" in blk and k not in attrs: attrs[k] = "NONE"; changed = True
+                elif k in attrs: attrs.pop(k); changed = True
+            if not changed: log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요\n", msg[:2000]); break
     il = app_info_loc(info["id"])
     api("PATCH", f"/v1/appInfoLocalizations/{il['id']}", {"data": {"type": "appInfoLocalizations", "id": il["id"], "attributes": {"subtitle": SUBTITLE, "privacyPolicyUrl": PRIVACY_URL}}})
     log(f"부제·개인정보 URL 설정")
