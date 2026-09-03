@@ -265,8 +265,15 @@ def cmd_finalize():
 
 def cmd_submit():
     a = app(); v = version(a["id"])
-    rs = api("POST", "/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "MAC_OS"}, "relationships": {"app": rel("apps", a["id"])}}})["data"]
-    api("POST", "/v1/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {"reviewSubmission": rel("reviewSubmissions", rs["id"]), "appStoreVersion": rel("appStoreVersions", v["id"])}}})
+    # 기존 미제출 건 재사용 (실패한 시도가 빈 제출 건을 남기지 않도록)
+    existing = [s for s in api("GET", f"/v1/reviewSubmissions?filter[app]={a['id']}&filter[platform]=MAC_OS&limit=10")["data"]
+                if s["attributes"].get("state") == "READY_FOR_REVIEW"]
+    for extra in existing[1:]:
+        api("DELETE", f"/v1/reviewSubmissions/{extra['id']}"); log(f"빈 제출 건 삭제 {extra['id']}")
+    rs = existing[0] if existing else api("POST", "/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "MAC_OS"}, "relationships": {"app": rel("apps", a["id"])}}})["data"]
+    items = api("GET", f"/v1/reviewSubmissions/{rs['id']}/items")["data"]
+    if not items:
+        api("POST", "/v1/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {"reviewSubmission": rel("reviewSubmissions", rs["id"]), "appStoreVersion": rel("appStoreVersions", v["id"])}}})
     api("PATCH", f"/v1/reviewSubmissions/{rs['id']}", {"data": {"type": "reviewSubmissions", "id": rs["id"], "attributes": {"submitted": True}}})
     log(f"✅ 심사 제출 완료 (submission {rs['id']})")
 
