@@ -57,9 +57,9 @@ macOS 14 Sonoma 이상.
 
 | 항목 | 값 |
 |---|---|
-| 개인정보처리방침 URL (필수) | `https://dbwnsgur741.github.io/hanjjok/privacy.html` |
+| 개인정보처리방침 URL (필수) | `https://github.com/dbwnsgur741/hanjjok/blob/main/docs/privacy.md` — Pages 주소(`dbwnsgur741.github.io`)는 개인 계정 커스텀 도메인 `fixyoo.me`로 리다이렉트되는데 그 DNS가 비어 있어 사용 불가. 도메인 정리 후 교체 |
 | 지원 URL (필수) | `https://github.com/dbwnsgur741/hanjjok/issues` |
-| 마케팅 URL (선택) | `https://dbwnsgur741.github.io/hanjjok/` (hanjjok.app 등록 후 교체) |
+| 마케팅 URL (선택) | 비움 (hanjjok.app 등록 후 입력) |
 
 ## 앱 개인정보 (App Privacy)
 
