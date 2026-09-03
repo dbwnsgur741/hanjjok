@@ -29,6 +29,7 @@ targets:
       properties:
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.productivity
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: 한쪽
         NSHumanReadableCopyright: "© 2026 Joonhyuk Yoo"
         ATSApplicationFontsPath: .

@@ -11,3 +11,8 @@ Hanjjok/Info.plist
 *.d
 *.swiftdeps
 *.swiftdeps~
+
+# App Store Connect API 키 — 절대 커밋 금지
+*.p8
+AuthKey_*
+tools/asc/config.local.json
