@@ -46,5 +46,5 @@ targets:
         # App Store 아카이브 전용 — Xcode 계정 로그인이 유효해야 동작
         Release:
           CODE_SIGN_STYLE: Automatic
-          DEVELOPMENT_TEAM: B868S3249K
+          DEVELOPMENT_TEAM: 62BMBHJVR3
           ENABLE_HARDENED_RUNTIME: true
