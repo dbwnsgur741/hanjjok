@@ -222,6 +222,24 @@ def cmd_price():
             "included": [{"type": "appPrices", "id": "${price0}", "attributes": {"startDate": None}, "relationships": {"appPricePoint": rel("appPricePoints", free[0]["id"])}}]}
     api("POST", "/v1/appPriceSchedules", body); log("가격: 무료 (base KOR)")
 
+def cmd_availability():
+    """판매 지역 — 전 지역 available. UI로 앱 레코드만 만들면 appAvailabilityV2가 아예 없어(404) 승인 뒤에도
+    스토어 페이지가 404였다(2026-09-05 실측). 이미 있으면 PATCH 대신 현황만 출력한다."""
+    a = app()
+    try:
+        cur = api("GET", f"/v2/appAvailabilities/{a['id']}/territoryAvailabilities?limit=200")["data"]
+        log(f"판매 지역: 이미 설정됨 — available {sum(1 for t in cur if t['attributes'].get('available'))}/{len(cur)}"); return
+    except SystemExit as e:
+        if "404" not in str(e): raise
+    terr = [t["id"] for t in api("GET", "/v1/territories?limit=200")["data"]]
+    inc = [{"type": "territoryAvailabilities", "id": f"${{ta-{t}}}", "attributes": {"available": True},
+            "relationships": {"territory": rel("territories", t)}} for t in terr]
+    body = {"data": {"type": "appAvailabilities", "attributes": {"availableInNewTerritories": True},
+                     "relationships": {"app": rel("apps", a["id"]),
+                                       "territoryAvailabilities": {"data": [{"type": "territoryAvailabilities", "id": i["id"]} for i in inc]}}},
+            "included": inc}
+    api("POST", "/v2/appAvailabilities", body); log(f"판매 지역: 전체 {len(terr)}개 available")
+
 def cmd_build():
     a = app(); v = version(a["id"], create=True)
     builds = [b for b in latest_build(a["id"]) if b["attributes"]["processingState"] == "VALID"]
@@ -281,7 +299,7 @@ def cmd_submit():
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     steps = {"status": cmd_status, "metadata": cmd_metadata, "screenshots": lambda: cmd_screenshots(sys.argv[2] if len(sys.argv) > 2 else None),
-             "price": cmd_price, "build": cmd_build, "review": cmd_review, "finalize": cmd_finalize, "submit": cmd_submit}
+             "price": cmd_price, "availability": cmd_availability, "build": cmd_build, "review": cmd_review, "finalize": cmd_finalize, "submit": cmd_submit}
     if cmd == "all":
         for s in ("metadata", "screenshots", "price", "build", "review", "finalize"): log(f"\n== {s} =="); steps[s]()
         log("\n== status =="); cmd_status()

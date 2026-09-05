@@ -4,7 +4,7 @@
 
 카카오톡 '나와의 채팅'에 메모하던 습관을 Mac 메뉴바로 옮겼습니다. `⌥Space`를 누르면 화면 한쪽에서 종이 한 장이 미끄러져 나오고, 적고, `Esc`로 닫으면 하던 일로 돌아갑니다.
 
-> Mac App Store 출시 준비 중. 무료.
+> **Mac App Store에서 무료로 받을 수 있습니다** — [apps.apple.com/kr/app/id6808060805](https://apps.apple.com/kr/app/id6808060805) (1.0, 2026-09-05 승인)
 
 ![한쪽 — 초성으로 찾는 맥 메모장](docs/screenshots/01-timeline-light.png)
 
