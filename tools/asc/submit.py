@@ -301,6 +301,6 @@ if __name__ == "__main__":
     steps = {"status": cmd_status, "metadata": cmd_metadata, "screenshots": lambda: cmd_screenshots(sys.argv[2] if len(sys.argv) > 2 else None),
              "price": cmd_price, "availability": cmd_availability, "build": cmd_build, "review": cmd_review, "finalize": cmd_finalize, "submit": cmd_submit}
     if cmd == "all":
-        for s in ("metadata", "screenshots", "price", "build", "review", "finalize"): log(f"\n== {s} =="); steps[s]()
+        for s in ("metadata", "screenshots", "price", "availability", "build", "review", "finalize"): log(f"\n== {s} =="); steps[s]()
         log("\n== status =="); cmd_status()
     else: steps[cmd]()
