@@ -182,8 +182,13 @@ AGE_2025 = {"advertising": False, "ageAssurance": False, "healthOrWellnessTopics
 
 def cmd_metadata():
     a = app(); info = app_info(a["id"])
-    api("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {"primaryCategory": rel("appCategories", "PRODUCTIVITY")}}})
-    log("카테고리: 생산성")
+    # 라이브 앱(READY_FOR_SALE 이력)에선 카테고리 PATCH가 "relationship not acceptable for current state"로
+    # 거부된다(1.0.1 실측) — 이미 설정돼 있으므로 경고만 남기고 계속한다.
+    try:
+        api("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {"primaryCategory": rel("appCategories", "PRODUCTIVITY")}}})
+        log("카테고리: 생산성")
+    except SystemExit as e:
+        log("카테고리: 변경 불가(이미 설정된 라이브 앱) — 건너뜀" if "not acceptable" in str(e) else f"⚠️ 카테고리 실패: {str(e)[:200]}")
     ar = api("GET", f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
     cur = ar["attributes"]
     BOOL = {"gambling", "unrestrictedWebAccess", "lootBox", "advertising", "ageAssurance", "healthOrWellnessTopics",
@@ -297,7 +302,8 @@ def cmd_finalize():
     log("저작권 설정")
     api("PATCH", f"/v1/apps/{a['id']}", {"data": {"type": "apps", "id": a["id"], "attributes": {"contentRightsDeclaration": "DOES_NOT_USE_THIRD_PARTY_CONTENT"}}})
     log("제3자 콘텐츠: 사용 안 함")
-    # 앱 개인정보 — 비공개 엔드포인트(fastlane deliver 와 동일 경로). 실패 시 UI에서 '데이터를 수집하지 않음' 선택.
+    # 앱 개인정보 — 공개 API에 없다(dataUsages 404, 2026-09-03 실측). 첫 제출 땐 UI에서 '데이터를 수집하지 않음'
+    # 게시가 필요했고, 업데이트에는 유지된다. 어떤 실패도 finalize를 멈추지 않는다.
     try:
         ex = api("GET", f"/v1/apps/{a['id']}/dataUsages?limit=200").get("data", [])
         if not any(((d.get("relationships") or {}).get("dataProtection") or {}).get("data", {}).get("id") == "DATA_NOT_COLLECTED" for d in ex):
