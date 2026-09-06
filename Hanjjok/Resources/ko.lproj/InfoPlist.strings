@@ -1,0 +1,4 @@
+/* 한국어 번들 선언용 — App Store 언어 표시(KO)와 Finder 정보 창 표시명 */
+"CFBundleDisplayName" = "한쪽";
+"CFBundleName" = "한쪽";
+"NSHumanReadableCopyright" = "© 2026 Joonhyuk Yoo";

@@ -1,6 +1,9 @@
 name: Hanjjok
 options:
   bundleIdPrefix: kr.hurdlers
+  # 앱 UI는 한국어 전용(문자열 하드코딩). 기본값 en이면 번들이 "영어 앱"으로 선언되어 App Store
+  # 언어 표시가 EN이 됐다(1.0 실사용 지적, 2026-09-07). ko.lproj/InfoPlist.strings와 함께 KO로 선언.
+  developmentLanguage: ko
   deploymentTarget:
     macOS: "14.0"
 packages:
@@ -28,6 +31,8 @@ targets:
       path: Hanjjok/Info.plist
       properties:
         LSUIElement: true
+        CFBundleDevelopmentRegion: ko
+        CFBundleLocalizations: [ko]
         LSApplicationCategoryType: public.app-category.productivity
         ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: 한쪽
