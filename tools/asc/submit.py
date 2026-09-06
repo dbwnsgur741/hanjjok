@@ -24,6 +24,29 @@ import base64, hashlib, json, os, subprocess, sys, time, urllib.request, urllib.
 API = "https://api.appstoreconnect.apple.com"
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUNDLE = os.environ.get("ASC_BUNDLE_ID", "kr.hurdlers.Hanjjok")
+
+def _project_versions():
+    """project.yml의 CFBundleShortVersionString / CFBundleVersion — 스토어 버전·빌드 번호의 단일 출처."""
+    try:
+        y = open(os.path.join(ROOT, "project.yml"), encoding="utf-8").read()
+        v = re.search(r'CFBundleShortVersionString:\s*"([^"]+)"', y).group(1)
+        b = re.search(r'CFBundleVersion:\s*"([^"]+)"', y).group(1)
+        return v, b
+    except Exception:
+        return "1.0", "1"
+VERSION = os.environ.get("ASC_VERSION") or _project_versions()[0]
+BUILD_NUMBER = os.environ.get("ASC_BUILD") or _project_versions()[1]
+
+# 업데이트 릴리스 노트(whatsNew) — 버전별. 없는 버전이면 metadata 단계가 건드리지 않는다.
+WHATS_NEW = {
+    "1.0.1": """• 긴 메모는 접혀서 보이고 "더 보기"로 펼칩니다
+• 메모 수정: Enter 줄바꿈, ⌘Enter 저장, Esc 취소 — 필드 아래에 힌트와 취소/저장 버튼
+• 컴포저 툴바에 입력 규칙 힌트, 설정 창에 단축키 표
+• 카드 본문 위에서 더블클릭해도 바로 수정 모드로 들어갑니다
+• 수정 중 ⌘B가 아래 입력창에 들어가던 문제, 검색 중 수정·삭제가 화면에 반영되지 않던 문제 수정
+• 패널 단축키를 지웠을 때 기본값(Option+Space)으로 되돌리는 버튼
+• App Store 언어 표시를 한국어로 정정""",
+}
 LOCALE = "ko"
 
 # ---------- 문안 (docs/appstore-listing.md 와 동일하게 유지) ----------
@@ -112,7 +135,9 @@ def version(app_id, create=False):
     live = [v for v in r["data"] if v["attributes"]["appStoreState"] in ("PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "WAITING_FOR_REVIEW", "IN_REVIEW")]
     if live: return live[0]
     if not create: return r["data"][0] if r["data"] else None
-    return api("POST", "/v1/appStoreVersions", {"data": {"type": "appStoreVersions", "attributes": {"platform": "MAC_OS", "versionString": "1.0"}, "relationships": {"app": rel("apps", app_id)}}})["data"]
+    if r["data"] and r["data"][0]["attributes"]["versionString"] == VERSION: return r["data"][0]
+    log(f"버전 {VERSION} 생성")
+    return api("POST", "/v1/appStoreVersions", {"data": {"type": "appStoreVersions", "attributes": {"platform": "MAC_OS", "versionString": VERSION}, "relationships": {"app": rel("apps", app_id)}}})["data"]
 def version_loc(vid):
     r = api("GET", f"/v1/appStoreVersions/{vid}/appStoreVersionLocalizations")
     for l in r["data"]:
@@ -186,9 +211,11 @@ def cmd_metadata():
     api("PATCH", f"/v1/appInfoLocalizations/{il['id']}", {"data": {"type": "appInfoLocalizations", "id": il["id"], "attributes": {"subtitle": SUBTITLE, "privacyPolicyUrl": PRIVACY_URL}}})
     log(f"부제·개인정보 URL 설정")
     v = version(a["id"], create=True); vl = version_loc(v["id"])
-    api("PATCH", f"/v1/appStoreVersionLocalizations/{vl['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": vl["id"], "attributes": {
-        "description": DESCRIPTION, "keywords": KEYWORDS, "promotionalText": PROMO, "supportUrl": SUPPORT_URL}}})
-    log("설명·키워드·프로모션·지원 URL 설정")
+    attrs = {"description": DESCRIPTION, "keywords": KEYWORDS, "promotionalText": PROMO, "supportUrl": SUPPORT_URL}
+    vs = v["attributes"]["versionString"]
+    if vs in WHATS_NEW: attrs["whatsNew"] = WHATS_NEW[vs]
+    api("PATCH", f"/v1/appStoreVersionLocalizations/{vl['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": vl["id"], "attributes": attrs}})
+    log("설명·키워드·프로모션·지원 URL" + ("·릴리스 노트" if "whatsNew" in attrs else "") + " 설정")
 
 def cmd_screenshots(d=None):
     d = d or os.path.join(ROOT, "docs", "screenshots")
@@ -243,7 +270,10 @@ def cmd_availability():
 def cmd_build():
     a = app(); v = version(a["id"], create=True)
     builds = [b for b in latest_build(a["id"]) if b["attributes"]["processingState"] == "VALID"]
-    if not builds: raise SystemExit("처리 완료(VALID)된 빌드가 아직 없음 — Apple 처리 대기 후 재시도")
+    # project.yml의 CFBundleVersion과 같은 빌드를 우선 — 없으면(아직 처리 중) 중단한다. 옛 빌드를 새 버전에 붙이면
+    # 심사에 옛 바이너리가 나가므로 "가장 최근 VALID"로 조용히 대체하지 않는다.
+    builds = [b for b in builds if b["attributes"]["version"] == BUILD_NUMBER]
+    if not builds: raise SystemExit(f"빌드 {BUILD_NUMBER}(VALID)가 아직 없음 — Apple 처리 대기 후 재시도")
     b = builds[0]
     if b["attributes"].get("usesNonExemptEncryption") is None:
         api("PATCH", f"/v1/builds/{b['id']}", {"data": {"type": "builds", "id": b["id"], "attributes": {"usesNonExemptEncryption": False}}})
