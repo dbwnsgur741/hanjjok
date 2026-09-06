@@ -19,7 +19,7 @@
   submit.py submit              심사 제출
   submit.py all                 위 전부 순서대로 (submit 제외)
 """
-import base64, hashlib, json, os, subprocess, sys, time, urllib.request, urllib.error, glob
+import base64, hashlib, json, os, re, subprocess, sys, time, urllib.request, urllib.error, glob
 
 API = "https://api.appstoreconnect.apple.com"
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
