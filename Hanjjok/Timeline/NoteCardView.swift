@@ -107,6 +107,13 @@ struct NoteCardView: View {
 
     private var editor: some View {
         VStack(alignment: .leading, spacing: 6) {
+            // 수정 모드에도 컴포저와 같은 서식 툴바를 둔다 — 없으면 처음부터 체크리스트로
+            // 만들지 않은 메모에 체크박스를 넣을 방법이 없다(사용자 지적). 힌트는 푸터가
+            // 이미 보여주므로 여기선 생략한다. 툴바 버튼 클릭이 텍스트뷰 포커스를 잠깐
+            // 뺏으면 onFocusLost → commitEdit이 먼저 달려 에디터가 닫혀 버리므로, 푸터
+            // 버튼과 같은 hover 가드(pointerOverEditButtons)로 막는다.
+            FormattingToolbar(commands: editCommands)
+                .onHover { pointerOverEditButtons = $0 }
             ComposerTextView(
                 text: $editText,
                 font: HanjjokTheme.bodyNSFont(),

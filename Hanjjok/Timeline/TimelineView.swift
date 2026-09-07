@@ -191,43 +191,12 @@ struct TimelineView: View {
         .padding(8)
     }
 
-    /// [QA r5-C] 서식 툴바 — 굵게·제목·불릿·체크리스트·인용·구분선. 컴포저 카드
-    /// 바깥 위쪽 한 행(아이콘만, spacing 2, 좌측 정렬)에 놓아 "에디터 느낌의 채팅창"을
-    /// 만들어 달라는 사용자 피드백에 대응한다. 각 버튼은 ComposerCommands를 거쳐
-    /// NSTextView에 직접 반영되고(undo 등록·textDidChange 발화 보장), 액션이 끝나면
-    /// ComposerCommands.restoreFocus가 포커스를 텍스트뷰로 되돌린다(그러지 않으면 버튼
-    /// 클릭 후 다음 타이핑이 씹힌다).
-    /// [v1.5] ⌘B는 여기 버튼의 전역 keyboardShortcut이 아니라 HanjjokTextView(포커스된 텍스트뷰)가
-    /// 직접 처리한다 — 전역 단축키였을 땐 카드 인라인 수정 중 ⌘B가 아래 컴포저에 `**`를 넣었다.
-    /// 오른쪽 끝엔 입력 규칙 힌트를 둔다(카드 수정 푸터의 "⌘Enter 저장"과 짝 — 두 필드의 Enter
-    /// 규칙이 다르므로 화면에서 바로 읽히게).
+    /// [QA r5-C] 서식 툴바 — 컴포저 카드 바깥 위쪽 한 행에 놓아 "에디터 느낌의 채팅창"을
+    /// 만들어 달라는 사용자 피드백에 대응한다. 본체는 FormattingToolbar(카드 인라인 수정과
+    /// 공유). 오른쪽 힌트는 카드 수정 푸터의 "⌘Enter 저장"과 짝 — 두 필드의 Enter 규칙이
+    /// 다르므로 화면에서 바로 읽히게 한다.
     private var composerToolbar: some View {
-        HStack(spacing: 2) {
-            ComposerIconButton(systemName: "bold", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
-                composerCommands.wrapSelection(with: "**")
-            }
-            ComposerIconButton(systemName: "textformat.size", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
-                composerCommands.togglePrefix("## ")
-            }
-            ComposerIconButton(systemName: "list.bullet", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
-                composerCommands.togglePrefix("- ")
-            }
-            ComposerIconButton(systemName: "checklist", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
-                composerCommands.togglePrefix("- [ ] ")
-            }
-            ComposerIconButton(systemName: "text.quote", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
-                composerCommands.togglePrefix("> ")
-            }
-            ComposerIconButton(systemName: "minus", inkSoft: inkSoft, ink: ink, iconSize: 12, frameSize: 20) {
-                composerCommands.insertDivider()
-            }
-            Spacer(minLength: 0)
-            Text("Enter 보내기 · ⇧Enter 줄바꿈")
-                .font(HanjjokTheme.uiFont(size: 10.5))
-                .foregroundStyle(inkSoft)
-                .lineLimit(1)
-                .truncationMode(.tail)
-        }
+        FormattingToolbar(commands: composerCommands, hint: "Enter 보내기 · ⇧Enter 줄바꿈")
     }
 
     /// [QA r4 ①] 컴포저의 단일 전송 경로 — Enter·⌘Enter(ComposerTextView.onSubmit)와 보내기
@@ -321,33 +290,6 @@ struct DaySeparator: View {
     }
 }
 
-/// [Task 24] 컴포저 아이콘 버튼 — HeaderView.HeaderIconButton과 같은 관례
-/// (SF Symbol template, inkSoft 기본, 호버 시 ink로 전환). 기본 13pt/22×22 히트 영역.
-/// [QA r5-C] 서식 툴바(composerToolbar)가 12pt/20×20으로 재사용한다.
-private struct ComposerIconButton: View {
-    let systemName: String
-    let inkSoft: Color
-    let ink: Color
-    /// [QA r5-C] 서식 툴바는 패널 폭이 좁아 12pt/20×20을 쓴다(기존 22×22보다 작게).
-    /// 기존 호출부는 이 두 파라미터를 생략해 그대로 13pt/22×22를 유지한다(소스 호환).
-    var iconSize: CGFloat = 13
-    var frameSize: CGFloat = 22
-    let action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: iconSize, weight: .regular))
-                .foregroundStyle(isHovering ? ink : inkSoft)
-                .frame(width: frameSize, height: frameSize)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
-    }
-}
 
 /// [QA r2] 컴포저 우측 보내기 버튼 — `arrow.up.circle.fill` 19pt. ComposerIconButton과
 /// 같은 22x22 히트 영역 관례를 따르되, 색은 호버가 아니라 draft 유무로 결정한다(비어 있으면
