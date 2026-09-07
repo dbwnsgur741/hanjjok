@@ -214,8 +214,13 @@ def cmd_metadata():
                 changed = True
             if not changed: log("⚠️ 연령 등급 API 실패 — UI에서 설정 필요\n", msg[:2000]); break
     il = app_info_loc(info["id"])
-    api("PATCH", f"/v1/appInfoLocalizations/{il['id']}", {"data": {"type": "appInfoLocalizations", "id": il["id"], "attributes": {"subtitle": SUBTITLE, "privacyPolicyUrl": PRIVACY_URL}}})
-    log(f"부제·개인정보 URL 설정")
+    # 라이브 앱의 appInfo(부제·개인정보 URL)는 업데이트 준비 상태에선 수정 불가(INVALID_STATE, 1.0.1 실측) —
+    # 이미 설정된 값이므로 경고만 남기고 버전 메타데이터로 넘어간다.
+    try:
+        api("PATCH", f"/v1/appInfoLocalizations/{il['id']}", {"data": {"type": "appInfoLocalizations", "id": il["id"], "attributes": {"subtitle": SUBTITLE, "privacyPolicyUrl": PRIVACY_URL}}})
+        log(f"부제·개인정보 URL 설정")
+    except SystemExit as e:
+        log("부제·개인정보 URL: 현재 상태에선 수정 불가(라이브 앱) — 건너뜀" if "INVALID_STATE" in str(e) or "not be modified" in str(e) else f"⚠️ appInfo 실패: {str(e)[:200]}")
     v = version(a["id"], create=True); vl = version_loc(v["id"])
     attrs = {"description": DESCRIPTION, "keywords": KEYWORDS, "promotionalText": PROMO, "supportUrl": SUPPORT_URL}
     vs = v["attributes"]["versionString"]
